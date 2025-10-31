@@ -47,6 +47,6 @@ RUN php artisan migrate --seed
 
 COPY unit.json /docker-entrypoint.d/unit.json
 
-EXPOSE 8000
+EXPOSE 80
 
 CMD ["sh", "-c", "php artisan migrate --seed && unitd --no-daemon"]

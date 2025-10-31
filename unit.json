@@ -1,0 +1,48 @@
+{
+  "listeners": {
+    "*:8000": {
+      "pass": "routes/laravel"
+    }
+  },
+  "routes": {
+    "laravel": [
+      {
+        "match": {
+          "uri": [
+            "/favicon.ico",
+            "/robots.txt",
+            "/asset-manifest.json",
+            "/mix-manifest.json",
+            "/storage/*",
+            "/vendor/*",
+            "/build/*"
+          ]
+        },
+        "action": {
+          "share": "/var/www/html/public$uri"
+        }
+      },
+      {
+        "action": {
+          "share": "/var/www/html/public$uri",
+          "fallback": {
+            "pass": "applications/laravel"
+          }
+        }
+      }
+    ]
+  },
+  "applications": {
+    "laravel": {
+      "type": "php",
+      "user": "unit",
+      "group": "unit",
+      "processes": {
+        "max": 10,
+        "spare": 2
+      },
+      "root": "/var/www/html/public",
+      "script": "index.php"
+    }
+  }
+}
