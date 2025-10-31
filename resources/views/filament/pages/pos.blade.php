@@ -337,11 +337,14 @@
                                             ₦{{ number_format($item['line_total'] ?? (($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0)), 2) }}
                                         </td>
                                         <td class="px-4 py-3 text-right">
-                                            <x-filament::icon-button
-                                                color="danger"
-                                                icon="heroicon-o-trash"
+                                            <button
+                                                type="button"
                                                 wire:click="removeItem('{{ $rowKey }}')"
-                                            />
+                                                class="rounded-md p-1.5 text-red-500 transition hover:bg-red-50 focus:outline-none focus:ring-1 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-500/10"
+                                            >
+                                                <span class="sr-only">Remove</span>
+                                                <x-heroicon-o-trash class="h-3.5 w-3.5" />
+                                            </button>
                                         </td>
                                     </tr>
                                 @empty
