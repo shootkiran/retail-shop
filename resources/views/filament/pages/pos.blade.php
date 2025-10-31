@@ -148,33 +148,39 @@
                 <x-slot name="heading">Customer &amp; Payment</x-slot>
 
                 <div class="space-y-4">
-                    <x-filament::select
-                        label="Customer"
-                        placeholder="Walk-in customer"
-                        wire:model="customerId"
-                    >
-                        @foreach ($this->customers as $customer)
-                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                        @endforeach
-                    </x-filament::select>
+                    <x-filament::input.wrapper label="Customer">
+                        <select
+                            wire:model="customerId"
+                            class="fi-input block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                        >
+                            <option value="">Walk-in customer</option>
+                            @foreach ($this->customers as $customer)
+                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                            @endforeach
+                        </select>
+                    </x-filament::input.wrapper>
 
-                    <x-filament::select
-                        label="Payment Method"
-                        placeholder="Select a method"
-                        wire:model="paymentMethodId"
-                    >
-                        @foreach ($this->paymentMethods as $method)
-                            <option value="{{ $method->id }}">{{ $method->name }}</option>
-                        @endforeach
-                    </x-filament::select>
+                    <x-filament::input.wrapper label="Payment Method">
+                        <select
+                            wire:model="paymentMethodId"
+                            class="fi-input block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                        >
+                            <option value="">Select a method</option>
+                            @foreach ($this->paymentMethods as $method)
+                                <option value="{{ $method->id }}">{{ $method->name }}</option>
+                            @endforeach
+                        </select>
+                    </x-filament::input.wrapper>
 
-                    <x-filament::select
-                        label="Payment Type"
-                        wire:model="paymentType"
-                    >
-                        <option value="paid">Paid</option>
-                        <option value="credit">Credit</option>
-                    </x-filament::select>
+                    <x-filament::input.wrapper label="Payment Type">
+                        <select
+                            wire:model="paymentType"
+                            class="fi-input block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                        >
+                            <option value="paid">Paid</option>
+                            <option value="credit">Credit</option>
+                        </select>
+                    </x-filament::input.wrapper>
                 </div>
             </x-filament::section>
 

@@ -30,7 +30,7 @@ class CustomersTable
                     ->toggleable(),
                 BadgeColumn::make('company')
                     ->colors(['primary'])
-                    ->visible(fn ($record) => filled($record->company)),
+                    ->visible(fn (?Customer $record) => filled($record?->company)),
                 TextColumn::make('outstanding_balance')
                     ->label('Balance')
                     ->money('ngn')

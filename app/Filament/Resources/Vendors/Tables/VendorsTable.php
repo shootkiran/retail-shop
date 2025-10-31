@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Vendors\Tables;
 
+use App\Models\Vendor;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -33,7 +34,7 @@ class VendorsTable
                 BadgeColumn::make('address')
                     ->label('Address')
                     ->limit(30)
-                    ->visible(fn ($record) => filled($record->address)),
+                    ->visible(fn (?Vendor $record) => filled($record?->address)),
             ])
             ->filters([
                 Filter::make('has_contact')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProductCategories\Tables;
 
+use App\Models\ProductCategory;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -27,7 +28,7 @@ class ProductCategoriesTable
                 BadgeColumn::make('description')
                     ->label('Description')
                     ->limit(40)
-                    ->visible(fn ($record) => filled($record->description)),
+                    ->visible(fn (?ProductCategory $record) => filled($record?->description)),
                 TextColumn::make('productItems_count')
                     ->label('Products')
                     ->counts('productItems')
