@@ -66,6 +66,7 @@ class POS extends Page
     public function mount(): void
     {
         $this->cart = [];
+        $this->paymentMethodId = $this->resolveDefaultPaymentMethodId();
     }
 
     public function updatedOrderDiscount($value): void
@@ -207,7 +208,7 @@ class POS extends Page
     {
         $this->cart = [];
         $this->customerId = null;
-        $this->paymentMethodId = null;
+        $this->paymentMethodId = $this->resolveDefaultPaymentMethodId();
         $this->paymentType = 'paid';
         $this->orderDiscount = 0.0;
         $this->taxRate = 0.0;
@@ -376,7 +377,7 @@ class POS extends Page
         }
 
         $this->customerId = $heldOrder->customer_id;
-        $this->paymentMethodId = $heldOrder->payment_method_id;
+        $this->paymentMethodId = $heldOrder->payment_method_id ?: $this->resolveDefaultPaymentMethodId();
         $this->paymentType = $heldOrder->payment_type;
         $this->orderDiscount = (float) $heldOrder->order_discount;
         $this->taxRate = (float) $heldOrder->tax_rate;
@@ -556,6 +557,29 @@ class POS extends Page
     public function getTaxableAmountProperty(): float
     {
         return max($this->subtotal - ($this->lineDiscount + $this->orderDiscount), 0);
+    }
+
+    protected function resolveDefaultPaymentMethodId(): ?int
+    {
+        static $defaultPaymentMethodId;
+
+        if ($defaultPaymentMethodId !== null) {
+            return $defaultPaymentMethodId;
+        }
+
+        $defaultPaymentMethodId = PaymentMethod::query()
+            ->where('is_active', true)
+            ->where('name', 'Cash')
+            ->value('id');
+
+        if ($defaultPaymentMethodId === null) {
+            $defaultPaymentMethodId = PaymentMethod::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->value('id');
+        }
+
+        return $defaultPaymentMethodId;
     }
 
     public function getTaxAmountProperty(): float

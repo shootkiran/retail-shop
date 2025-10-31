@@ -31,8 +31,6 @@ RUN chown -R unit:unit storage bootstrap/cache database \
 
 RUN cp .env.example .env
 
-RUN composer install --prefer-dist --optimize-autoloader --no-interaction
-
 RUN composer upgrade --prefer-dist --optimize-autoloader --no-interaction
 
 RUN npm install && npm run build
