@@ -2,13 +2,13 @@
 
 namespace App\Filament\Resources\ProductItems\Schemas;
 
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 
 class ProductItemForm
 {
@@ -49,11 +49,11 @@ class ProductItemForm
                         ->schema([
                             TextInput::make('unit_cost')
                                 ->numeric()
-                                ->prefix('₦')
+                                ->prefix('रू')
                                 ->minValue(0),
                             TextInput::make('unit_price')
                                 ->numeric()
-                                ->prefix('₦')
+                                ->prefix('रू')
                                 ->minValue(0),
                             TextInput::make('tax_rate')
                                 ->label('Tax Rate')

@@ -50,10 +50,7 @@
         .pos-compact input,
         .pos-compact select,
         .pos-compact textarea,
-        .pos-compact .fi-input,
-        .pos-compact .fi-select,
-        .pos-compact button,
-        .pos-compact .fi-button {
+        .pos-compact button {
             padding: 0.25rem 0.4rem !important;
             min-height: auto !important;
         }
@@ -63,404 +60,735 @@
 <x-filament-panels::page>
     <div
         class="pos-compact"
-        x-data
-        x-init="
-            const handler = (event) => {
-                if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-                    event.preventDefault();
-                    $wire.clearCart();
-                }
-            };
-            window.addEventListener('keydown', handler);
-            return () => window.removeEventListener('keydown', handler);
-        "
+        x-data="posApp(@js($this->frontendState))"
+        x-init="init()"
     >
         <div class="grid gap-4 xl:grid-cols-3">
-        <div class="space-y-4 xl:col-span-2">
-            <x-filament::section>
-                <x-slot name="heading">Quick Actions</x-slot>
+            <div class="space-y-4 xl:col-span-2">
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
+                    <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">Quick Actions</h2>
 
-                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <x-filament::input.wrapper label="Search Products">
-                        <x-filament::input
-                            type="search"
-                            wire:model.live.debounce.400ms="search"
-                            placeholder="Search by name, SKU or barcode"
-                            autocomplete="off"
-                        />
-                    </x-filament::input.wrapper>
-
-                    <x-filament::input.wrapper label="Scan Barcode">
-                        <x-filament::input
-                            type="text"
-                            wire:model.defer="barcode"
-                            placeholder="Scan or enter barcode"
-                            autocomplete="off"
-                            wire:keydown.enter="scanBarcode"
-                        />
-                    </x-filament::input.wrapper>
-
-                    <div class="flex items-end">
-                        <button
-                            type="button"
-                            wire:click="holdOrder"
-                            wire:loading.attr="disabled"
-                            class="flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-100 px-3 py-2 font-semibold text-gray-700 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-                        >
-                            <x-heroicon-o-clock class="h-3.5 w-3.5" />
-                            <span>Hold Order</span>
-                        </button>
-                    </div>
-                </div>
-            </x-filament::section>
-
-            @if ($this->heldOrders->isNotEmpty())
-                <x-filament::section>
-                    <x-slot name="heading">Held Orders</x-slot>
-
-                    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-white/10">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10 text-sm">
-                            <thead class="bg-gray-50 dark:bg-white/5">
-                                <tr class="text-left">
-                                    <th class="px-4 py-3 font-medium">Label</th>
-                                    <th class="px-4 py-3 font-medium">Customer</th>
-                                    <th class="px-4 py-3 font-medium">Cart Preview</th>
-                                    <th class="px-4 py-3 font-medium">Updated</th>
-                                    <th class="px-4 py-3 text-right font-medium">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                                @foreach ($this->heldOrders as $heldOrder)
-                                    @php
-                                        $items = collect(data_get($heldOrder->cart, 'items', []));
-                                        $previewItems = $items->take(3)->map(function ($item) {
-                                            $quantity = (int) ($item['quantity'] ?? 1);
-                                            $quantity = $quantity > 0 ? $quantity : 1;
-                                            $name = $item['name'] ?? 'Item';
-                                            return $quantity . ' x ' . $name;
-                                        })->implode(', ');
-                                        $remainingCount = max($items->count() - 3, 0);
-                                        $preview = $previewItems !== '' ? $previewItems : 'No items';
-                                        if ($remainingCount > 0) {
-                                            $preview .= ' +' . $remainingCount . ' more';
-                                        }
-                                    @endphp
-                                    <tr wire:key="held-order-{{ $heldOrder->id }}">
-                                        <td class="px-4 py-3 align-top">
-                                            <div class="font-medium">{{ $heldOrder->label ?? 'Untitled order' }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 align-top">
-                                            {{ $heldOrder->customer?->name ?? 'Walk-in customer' }}
-                                        </td>
-                                        <td class="px-4 py-3 align-top text-sm text-gray-600 dark:text-gray-300">
-                                            {{ $preview }}
-                                        </td>
-                                        <td class="px-4 py-3 align-top text-sm text-gray-600 dark:text-gray-300">
-                                            {{ $heldOrder->updated_at->diffForHumans() }}
-                                        </td>
-                                        <td class="px-4 py-3 align-top text-right">
-                                            <button
-                                                type="button"
-                                                wire:click="resumeOrder({{ $heldOrder->id }})"
-                                                wire:loading.attr="disabled"
-                                                class="inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1.5 font-semibold text-white transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
-                                            >
-                                                <x-heroicon-o-arrow-path class="h-3 w-3" />
-                                                <span>Resume</span>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </x-filament::section>
-            @endif
-
-            <x-filament::section>
-                <x-slot name="heading">Categories</x-slot>
-
-                <div class="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        wire:click="selectCategory(null)"
-                        class="@class([
-                            'inline-flex items-center rounded-md border px-3 py-1 font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500',
-                            'border-primary-600 bg-primary-600 text-white hover:bg-primary-500' => ! $activeCategory,
-                            'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700' => $activeCategory,
-                        ])"
-                    >
-                        All Products
-                    </button>
-
-                    @foreach ($this->categories as $category)
-                        <button
-                            type="button"
-                            wire:click="selectCategory({{ $category->id }})"
-                            class="@class([
-                                'inline-flex items-center rounded-md border px-3 py-1 font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500',
-                                'border-primary-600 bg-primary-600 text-white hover:bg-primary-500' => $activeCategory === $category->id,
-                                'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700' => $activeCategory !== $category->id,
-                            ])"
-                        >
-                            {{ $category->name }}
-                        </button>
-                    @endforeach
-                </div>
-            </x-filament::section>
-
-            <div class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-                @forelse ($this->products as $product)
-                    <x-filament::section wire:key="product-{{ $product->id }}">
-                        <div class="flex items-start justify-between gap-4">
-                            <div class="space-y-1">
-                                <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ $product->name }}
-                                </h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                    SKU: {{ $product->sku }}
-                                    @if ($product->barcode)
-                                        &bull; Barcode: {{ $product->barcode }}
-                                    @endif
-                                </p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                    In stock: {{ $product->stock_quantity }}
-                                </p>
-                            </div>
-                            <x-filament::badge color="success">₦{{ number_format($product->unit_price, 2) }}</x-filament::badge>
-                        </div>
-
-                        <button
-                            type="button"
-                            wire:click="addProduct({{ $product->id }})"
-                            wire:loading.attr="disabled"
-                            class="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md bg-primary-600 px-3 py-2 font-semibold text-white transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
-                        >
-                            <x-heroicon-o-plus class="h-3.5 w-3.5" />
-                            <span>Add to Cart</span>
-                        </button>
-                    </x-filament::section>
-                @empty
-                    <x-filament::empty-state class="sm:col-span-2 2xl:col-span-3" icon="heroicon-o-magnifying-glass">
-                        <x-slot name="heading">No products found</x-slot>
-                        <x-slot name="description">
-                            Try adjusting your filters or add new inventory from the Catalog section.
-                        </x-slot>
-                    </x-filament::empty-state>
-                @endforelse
-            </div>
-        </div>
-
-        <div class="space-y-4">
-            <x-filament::section>
-                <x-slot name="heading">Customer &amp; Payment</x-slot>
-
-                <div class="space-y-4">
-                    <x-filament::input.wrapper label="Customer">
-                        <select
-                            wire:model="customerId"
-                            class="fi-input block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
-                        >
-                            <option value="">Walk-in customer</option>
-                            @foreach ($this->customers as $customer)
-                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                            @endforeach
-                        </select>
-                    </x-filament::input.wrapper>
-
-                    <x-filament::input.wrapper label="Payment Method">
-                        <select
-                            wire:model="paymentMethodId"
-                            class="fi-input block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
-                        >
-                            <option value="">Select a method</option>
-                            @foreach ($this->paymentMethods as $method)
-                                <option value="{{ $method->id }}">{{ $method->name }}</option>
-                            @endforeach
-                        </select>
-                    </x-filament::input.wrapper>
-
-                    <x-filament::input.wrapper label="Payment Type">
-                        <select
-                            wire:model="paymentType"
-                            class="fi-input block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
-                        >
-                            <option value="paid">Paid</option>
-                            <option value="credit">Credit</option>
-                        </select>
-                    </x-filament::input.wrapper>
-                </div>
-            </x-filament::section>
-
-            <x-filament::section>
-                <x-slot name="heading">Cart</x-slot>
-
-                <div class="space-y-3">
-                    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-white/10">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10 text-sm">
-                            <thead class="bg-gray-50 dark:bg-white/5">
-                                <tr class="text-left">
-                                    <th class="px-4 py-3 font-medium">Item</th>
-                                    <th class="px-4 py-3 font-medium">Qty</th>
-                                    <th class="px-4 py-3 font-medium">Discount</th>
-                                    <th class="px-4 py-3 font-medium text-right">Total</th>
-                                    <th class="px-4 py-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-white/5">
-                                @forelse ($this->cart as $rowKey => $item)
-                                    <tr wire:key="cart-{{ $rowKey }}">
-                                        <td class="px-4 py-3 align-top">
-                                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ $item['name'] }}</div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                {{ $item['sku'] ?? 'N/A' }}
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-3">
-                                            <x-filament::input
-                                                type="number"
-                                                min="1"
-                                                wire:model.live="cart.{{ $rowKey }}.quantity"
-                                                class="w-20"
-                                            />
-                                        </td>
-                                        <td class="px-4 py-3">
-                                            <x-filament::input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                wire:model.live="cart.{{ $rowKey }}.discount"
-                                                class="w-24"
-                                            />
-                                        </td>
-                                        <td class="px-4 py-3 text-right font-semibold">
-                                            ₦{{ number_format($item['line_total'] ?? (($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0)), 2) }}
-                                        </td>
-                                        <td class="px-4 py-3 text-right">
-                                            <button
-                                                type="button"
-                                                wire:click="removeItem('{{ $rowKey }}')"
-                                                class="rounded-md p-1.5 text-red-500 transition hover:bg-red-50 focus:outline-none focus:ring-1 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-500/10"
-                                            >
-                                                <span class="sr-only">Remove</span>
-                                                <x-heroicon-o-trash class="h-3.5 w-3.5" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                                            No items in the cart yet.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <x-filament::input.wrapper label="Order Discount">
-                            <x-filament::input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                wire:model.live="orderDiscount"
-                                prefix="₦"
-                            />
-                        </x-filament::input.wrapper>
-
-                        <x-filament::input.wrapper label="Amount Paid">
-                            <x-filament::input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                wire:model.live="amountPaid"
-                                prefix="₦"
-                            />
-                        </x-filament::input.wrapper>
-
-                        <div class="rounded-lg bg-gray-50 p-4 text-sm dark:bg-white/5 sm:col-span-2">
-                            <div class="flex justify-between">
-                                <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
-                                <span class="font-semibold">₦{{ number_format($this->subtotal, 2) }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-500 dark:text-gray-400">Total Discounts</span>
-                                <span class="font-semibold">₦{{ number_format($this->lineDiscount + $orderDiscount, 2) }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-500 dark:text-gray-400">Subtotal After Discount</span>
-                                <span class="font-semibold">₦{{ number_format($this->subtotalAfterDiscount, 2) }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-500 dark:text-gray-400">Tax</span>
-                                <span class="font-semibold">₦{{ number_format($this->taxAmount, 2) }}</span>
-                            </div>
-                            <div class="mt-3 flex justify-between text-base font-semibold">
-                                <span>Total Due</span>
-                                <span>₦{{ number_format($this->grandTotal, 2) }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                                <span>Balance</span>
-                                <span class="font-semibold text-gray-900 dark:text-gray-100">₦{{ number_format($this->amountDue, 2) }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-2.5">
-                        <button
-                            type="button"
-                            wire:click="checkout"
-                            wire:loading.attr="disabled"
-                            class="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 font-semibold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60"
-                        >
-                            <x-heroicon-o-credit-card class="h-3.5 w-3.5" />
-                            <span>Checkout &amp; Print Invoice</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            wire:click="clearCart"
-                            class="flex w-full items-center justify-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-3 py-2 font-semibold text-red-600 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-                        >
-                            <x-heroicon-o-trash class="h-3.5 w-3.5" />
-                            <span>Clear Cart</span>
-                        </button>
-
-                        @if ($lastSaleId)
-                            <a
-                                href="{{ route('sales.invoice', $lastSaleId) }}"
-                                target="_blank"
-                                class="flex w-full items-center justify-center gap-1.5 rounded-md border border-secondary-500 bg-secondary-600 px-3 py-2 font-semibold text-white transition hover:bg-secondary-500 focus:outline-none focus:ring-2 focus:ring-secondary-400"
+                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
+                            <span>Search Products</span>
+                            <input
+                                type="search"
+                                x-model.debounce.300ms="filters.search"
+                                placeholder="Search by name, SKU or barcode"
+                                autocomplete="off"
+                                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-normal shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-950 dark:text-white"
                             >
-                                <x-heroicon-o-document-text class="h-3.5 w-3.5" />
-                                <span>Download Last Invoice</span>
-                            </a>
-                        @endif
+                        </label>
+
+                        <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
+                            <span>Scan Barcode</span>
+                            <input
+                                type="text"
+                                x-model="scanner.input"
+                                placeholder="Scan or enter barcode"
+                                autocomplete="off"
+                                @keydown.enter.prevent="applyBarcode()"
+                                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-normal shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-950 dark:text-white"
+                            >
+                        </label>
+
+                        <div class="flex items-end">
+                            <button
+                                type="button"
+                                @click="holdCurrentOrder"
+                                :disabled="isProcessing || cart.length === 0"
+                                class="flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-100 px-3 py-2 font-semibold text-gray-700 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                            >
+                                <x-heroicon-o-clock class="h-3.5 w-3.5" />
+                                <span>Hold Order</span>
+                            </button>
+                        </div>
                     </div>
+                </section>
+
+                <template x-if="heldOrders.length">
+                    <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
+                        <div class="mb-3 flex items-center justify-between">
+                            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">Held Orders</h2>
+                            <span class="text-[0.55rem] font-medium text-gray-400">Resume to move items back into the cart</span>
+                        </div>
+
+                        <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-white/10">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10 text-xs">
+                                <thead class="bg-gray-50 dark:bg-white/5">
+                                    <tr class="text-left">
+                                        <th class="px-3 py-2 font-semibold">Label</th>
+                                        <th class="px-3 py-2 font-semibold">Customer</th>
+                                        <th class="px-3 py-2 font-semibold">Cart Preview</th>
+                                        <th class="px-3 py-2 font-semibold">Updated</th>
+                                        <th class="px-3 py-2 text-right font-semibold">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 dark:divide-white/5">
+                                    <template x-for="order in heldOrders" :key="order.id">
+                                        <tr>
+                                            <td class="px-3 py-2 align-top">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100" x-text="order.label"></div>
+                                            </td>
+                                            <td class="px-3 py-2 align-top" x-text="order.customer_name"></td>
+                                            <td class="px-3 py-2 align-top text-gray-600 dark:text-gray-300" x-text="order.preview"></td>
+                                            <td class="px-3 py-2 align-top text-gray-600 dark:text-gray-300" x-text="order.updated_at_for_humans"></td>
+                                            <td class="px-3 py-2 align-top text-right">
+                                                <div class="flex justify-end gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        @click="resumeHeldOrder(order.id)"
+                                                        :disabled="isProcessing"
+                                                        class="inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1.5 font-semibold text-white transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        <x-heroicon-o-arrow-path class="h-3 w-3" />
+                                                        <span>Resume</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        @click="deleteHeldOrder(order.id)"
+                                                        :disabled="isProcessing"
+                                                        class="inline-flex items-center gap-1 rounded-md border border-red-300 px-2 py-1 text-[0.65rem] font-semibold text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-500/10"
+                                                    >
+                                                        <x-heroicon-o-trash class="h-3 w-3" />
+                                                        <span>Delete</span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </template>
+
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
+                    <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">Categories</h2>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            @click="filters.activeCategory = null"
+                            :class="filters.activeCategory === null ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-500' : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700'"
+                            class="inline-flex items-center rounded-md border px-3 py-1 text-[0.7rem] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                            All Products
+                        </button>
+
+                        <template x-for="category in categories" :key="category.id">
+                            <button
+                                type="button"
+                                @click="filters.activeCategory = category.id"
+                                :class="filters.activeCategory === category.id ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-500' : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700'"
+                                class="inline-flex items-center rounded-md border px-3 py-1 text-[0.7rem] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                x-text="category.name"
+                            ></button>
+                        </template>
+                    </div>
+                </section>
+
+                <div class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                    <template x-if="filteredProducts.length === 0">
+                        <div class="sm:col-span-2 2xl:col-span-3 rounded-xl border border-dashed border-gray-200 p-6 text-center text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
+                            No products match your filters.
+                        </div>
+                    </template>
+
+                    <template x-for="product in filteredProducts" :key="product.id">
+                        <section class="space-y-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition hover:border-primary-200 dark:border-white/10 dark:bg-gray-900">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="space-y-1">
+                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="product.name"></h3>
+                                    <p class="text-[0.6rem] text-gray-500 dark:text-gray-400">
+                                        <span x-text="'SKU: ' + (product.sku ?? 'N/A')"></span>
+                                        <template x-if="product.barcode">
+                                            <span class="ml-1" x-text="'• Barcode: ' + product.barcode"></span>
+                                        </template>
+                                    </p>
+                                    <p class="text-[0.6rem] text-gray-500 dark:text-gray-400" x-text="'In stock: ' + product.stock_quantity"></p>
+                                </div>
+                                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" x-text="formatMoney(product.unit_price)"></span>
+                            </div>
+
+                            <button
+                                type="button"
+                                @click="addToCart(product)"
+                                :disabled="isProcessing"
+                                class="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary-600 px-3 py-2 text-[0.7rem] font-semibold text-white transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <x-heroicon-o-plus class="h-3.5 w-3.5" />
+                                <span>Add to Cart</span>
+                            </button>
+                        </section>
+                    </template>
                 </div>
-            </x-filament::section>
+            </div>
 
-            <x-filament::section>
-                <x-slot name="heading">Recent Sales</x-slot>
+            <div class="space-y-4">
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
+                    <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">Customer &amp; Payment</h2>
 
-                <div class="space-y-2.5">
-                    @forelse ($this->recentSales as $sale)
-                        <div class="flex items-center justify-between text-sm">
-                            <div>
-                                <div class="font-semibold text-gray-900 dark:text-gray-100">{{ $sale->reference }}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ optional($sale->sold_at)->diffForHumans() ?? 'Not set' }}
+                    <div class="space-y-4">
+                        <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
+                            <span>Customer</span>
+                            <select
+                                x-model.number="customerId"
+                                class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                            >
+                                <option value="">Walk-in customer</option>
+                                <template x-for="customer in customers" :key="customer.id">
+                                    <option :value="customer.id" x-text="customer.name"></option>
+                                </template>
+                            </select>
+                        </label>
+
+                        <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
+                            <span>Payment Method</span>
+                            <select
+                                x-model.number="paymentMethodId"
+                                class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                            >
+                                <option value="">Select a method</option>
+                                <template x-for="method in paymentMethods" :key="method.id">
+                                    <option :value="method.id" x-text="method.name"></option>
+                                </template>
+                            </select>
+                        </label>
+
+                        <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
+                            <span>Payment Type</span>
+                            <select
+                                x-model="paymentType"
+                                class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                            >
+                                <option value="paid">Paid</option>
+                                <option value="credit">Credit</option>
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
+                    <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">Cart</h2>
+
+                    <div class="space-y-3">
+                        <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-white/10">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10 text-xs">
+                                <thead class="bg-gray-50 dark:bg-white/5">
+                                    <tr class="text-left">
+                                        <th class="px-3 py-2 font-semibold">Item</th>
+                                        <th class="px-3 py-2 font-semibold">Qty</th>
+                                        <th class="px-3 py-2 font-semibold">Discount</th>
+                                        <th class="px-3 py-2 text-right font-semibold">Line Total</th>
+                                        <th class="px-3 py-2"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 dark:divide-white/5">
+                                    <template x-if="cart.length === 0">
+                                        <tr>
+                                            <td colspan="5" class="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">No items in the cart yet.</td>
+                                        </tr>
+                                    </template>
+
+                                    <template x-for="item in cart" :key="item.product_id">
+                                        <tr>
+                                            <td class="px-3 py-2 align-top">
+                                                <div class="font-semibold text-gray-900 dark:text-gray-100" x-text="item.name"></div>
+                                                <div class="text-[0.6rem] text-gray-500 dark:text-gray-400" x-text="item.sku ?? 'N/A'"></div>
+                                            </td>
+                                            <td class="px-3 py-2 align-top">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    x-model.number="item.quantity"
+                                                    @change="updateQuantity(item)"
+                                                    class="w-16 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                                                >
+                                            </td>
+                                            <td class="px-3 py-2 align-top">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    x-model.number="item.discount"
+                                                    @change="updateDiscount(item)"
+                                                    class="w-20 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                                                >
+                                            </td>
+                                            <td class="px-3 py-2 align-top text-right font-semibold" x-text="formatMoney(item.line_total)"></td>
+                                            <td class="px-3 py-2 align-top text-right">
+                                                <button
+                                                    type="button"
+                                                    @click="removeFromCart(item.product_id)"
+                                                    class="rounded-md p-1.5 text-red-500 transition hover:bg-red-50 focus:outline-none focus:ring-1 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-500/10"
+                                                >
+                                                    <span class="sr-only">Remove</span>
+                                                    <x-heroicon-o-trash class="h-3.5 w-3.5" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
+                                <span>Order Discount</span>
+                                <div class="relative flex items-center">
+                                    <span class="absolute left-2 text-[0.6rem] text-gray-500 dark:text-gray-400">₦</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        x-model.number="orderDiscount"
+                                        @change="clampOrderDiscount()"
+                                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-5 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                                    >
+                                </div>
+                            </label>
+
+                            <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
+                                <span>Amount Paid</span>
+                                <div class="relative flex items-center">
+                                    <span class="absolute left-2 text-[0.6rem] text-gray-500 dark:text-gray-400">₦</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        x-model.number="amountPaid"
+                                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-5 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                                    >
+                                </div>
+                            </label>
+
+                            <div class="rounded-lg bg-gray-50 p-4 text-xs dark:bg-white/5 sm:col-span-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
+                                    <span class="font-semibold" x-text="formatMoney(subtotal)"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500 dark:text-gray-400">Total Discounts</span>
+                                    <span class="font-semibold" x-text="formatMoney(lineDiscount + orderDiscount)"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500 dark:text-gray-400">Subtotal After Discount</span>
+                                    <span class="font-semibold" x-text="formatMoney(subtotalAfterDiscount)"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-500 dark:text-gray-400">Tax</span>
+                                    <span class="font-semibold" x-text="formatMoney(taxAmount)"></span>
+                                </div>
+                                <div class="mt-3 flex justify-between text-base font-semibold">
+                                    <span>Total Due</span>
+                                    <span x-text="formatMoney(grandTotal)"></span>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                                    <span>Balance</span>
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100" x-text="formatMoney(amountDue)"></span>
                                 </div>
                             </div>
-                            <div class="text-sm font-semibold">₦{{ number_format($sale->grand_total, 2) }}</div>
                         </div>
-                    @empty
-                        <p class="text-sm text-gray-500 dark:text-gray-400">No sales recorded yet.</p>
-                    @endforelse
-                </div>
-            </x-filament::section>
+
+                        <div class="space-y-2.5">
+                            <button
+                                type="button"
+                                @click="checkout"
+                                :disabled="isProcessing || cart.length === 0"
+                                class="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[0.75rem] font-semibold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <x-heroicon-o-credit-card class="h-3.5 w-3.5" />
+                                <span x-text="isProcessing ? 'Processing…' : 'Checkout & Print Invoice'"></span>
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="clearCart()"
+                                class="flex w-full items-center justify-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-[0.75rem] font-semibold text-red-600 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+                            >
+                                <x-heroicon-o-trash class="h-3.5 w-3.5" />
+                                <span>Clear Cart</span>
+                            </button>
+
+                            <p class="text-center text-[0.55rem] font-medium text-gray-500 dark:text-gray-400">
+                                Shortcut: Command + K / Ctrl + K
+                            </p>
+
+                            <template x-if="lastSaleId">
+                                <a
+                                    :href="invoiceUrl(lastSaleId)"
+                                    target="_blank"
+                                    class="flex w-full items-center justify-center gap-1.5 rounded-md border border-slate-500 bg-slate-600 px-3 py-2 text-[0.75rem] font-semibold text-white transition hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                                >
+                                    <x-heroicon-o-document-text class="h-3.5 w-3.5" />
+                                    <span>Download Last Invoice</span>
+                                </a>
+                            </template>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
+                    <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">Recent Sales</h2>
+
+                    <div class="space-y-2.5">
+                        <template x-if="recentSales.length === 0">
+                            <p class="text-xs text-gray-500 dark:text-gray-400">No sales recorded yet.</p>
+                        </template>
+
+                        <template x-for="sale in recentSales" :key="sale.id">
+                            <div class="flex items-center justify-between text-xs">
+                                <div>
+                                    <div class="font-semibold text-gray-900 dark:text-gray-100" x-text="sale.reference"></div>
+                                    <div class="text-[0.55rem] text-gray-500 dark:text-gray-400" x-text="sale.sold_at_for_humans || 'Not set'"></div>
+                                </div>
+                                <div class="text-sm font-semibold" x-text="formatMoney(sale.grand_total)"></div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+            </div>
         </div>
     </div>
-    </div>
 </x-filament-panels::page>
+
+@push('scripts')
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('posApp', (initial) => ({
+                categories: initial.categories ?? [],
+                products: initial.products ?? [],
+                customers: initial.customers ?? [],
+                paymentMethods: initial.paymentMethods ?? [],
+                heldOrders: initial.heldOrders ?? [],
+                recentSales: initial.recentSales ?? [],
+                filters: {
+                    search: '',
+                    activeCategory: null,
+                },
+                scanner: {
+                    input: '',
+                },
+                cart: [],
+                customerId: initial.defaults.customer_id ?? null,
+                defaultPaymentMethodId: initial.defaults?.payment_method_id ?? null,
+                paymentMethodId: initial.defaults?.payment_method_id ?? null,
+                paymentType: initial.defaults?.payment_type ?? 'paid',
+                orderDiscount: Number(initial.defaults?.order_discount ?? 0),
+                amountPaid: Number(initial.defaults?.amount_paid ?? 0),
+                lastSaleId: initial.defaults?.last_sale_id ?? null,
+                invoiceTemplate: initial.defaults?.invoice_url_template ?? '',
+                isProcessing: false,
+                holdName: '',
+                init() {
+                    this.cart = [];
+                    this._shortcutHandler = (event) => {
+                        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+                            event.preventDefault();
+                            this.clearCart();
+                        }
+                    };
+                    window.addEventListener('keydown', this._shortcutHandler);
+
+                    Livewire.on('pos:checkout-completed', (payload) => this.handleCheckoutCompleted(payload ?? {}));
+                    Livewire.on('pos:hold-completed', (payload) => this.handleHoldCompleted(payload ?? {}));
+                    Livewire.on('pos:held-order-deleted', ({ heldOrderId } = {}) => this.handleHeldOrderDeleted(heldOrderId));
+                    Livewire.on('pos:held-order-resumed', (payload) => this.handleHeldOrderResumed(payload ?? {}));
+                },
+                destroy() {
+                    window.removeEventListener('keydown', this._shortcutHandler);
+                },
+                get filteredProducts() {
+                    const term = (this.filters.search ?? '').trim().toLowerCase();
+                    return this.products.filter((product) => {
+                        const matchesCategory = this.filters.activeCategory === null
+                            || product.product_category_id === this.filters.activeCategory;
+
+                        if (!matchesCategory) {
+                            return false;
+                        }
+
+                        if (term === '') {
+                            return true;
+                        }
+
+                        return [product.name, product.sku, product.barcode]
+                            .filter(Boolean)
+                            .some((value) => value.toLowerCase().includes(term));
+                    });
+                },
+                get subtotal() {
+                    return this.cart.reduce((total, item) => total + (item.line_subtotal ?? 0), 0);
+                },
+                get lineDiscount() {
+                    return this.cart.reduce((total, item) => total + Number(item.discount ?? 0), 0);
+                },
+                get subtotalAfterDiscount() {
+                    return Math.max(this.subtotal - (this.lineDiscount + this.orderDiscount), 0);
+                },
+                get taxAmount() {
+                    const lineNets = this.cart.map((item) => Math.max((item.line_subtotal ?? 0) - Number(item.discount ?? 0), 0));
+                    const totalLineNet = lineNets.reduce((sum, value) => sum + value, 0);
+
+                    if (totalLineNet <= 0) {
+                        return 0;
+                    }
+
+                    const orderDiscount = this.orderDiscount;
+
+                    return this.cart.reduce((total, item, index) => {
+                        const lineNet = lineNets[index];
+                        const taxRate = Number(item.tax_rate ?? 0);
+
+                        if (lineNet <= 0 || taxRate <= 0) {
+                            return total;
+                        }
+
+                        const share = lineNet / totalLineNet;
+                        const taxableBase = Math.max(lineNet - (share * orderDiscount), 0);
+
+                        return total + (taxableBase * taxRate / 100);
+                    }, 0);
+                },
+                get grandTotal() {
+                    return Math.max(this.subtotalAfterDiscount + this.taxAmount, 0);
+                },
+                get amountDue() {
+                    return Math.max(this.grandTotal - this.amountPaid, 0);
+                },
+                formatMoney(value) {
+                    return '₦' + new Intl.NumberFormat('en-NG', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    }).format(Number(value ?? 0));
+                },
+                invoiceUrl(id) {
+                    return this.invoiceTemplate.replace('__SALE__', id);
+                },
+                addToCart(product) {
+                    if (!product || product.stock_quantity <= 0) {
+                        return;
+                    }
+
+                    const existing = this.cart.find((item) => item.product_id === product.id);
+
+                    if (existing) {
+                        existing.quantity = Math.min(existing.quantity + 1, product.stock_quantity);
+                        this.recalculateCartItem(existing);
+                        return;
+                    }
+
+                    const item = this.createCartItem(product);
+                    this.cart.push(item);
+                    this.recalculateCartItem(item);
+                    this.clampOrderDiscount();
+                },
+                updateQuantity(item) {
+                    const product = this.productById(item.product_id);
+                    if (!product) {
+                        return;
+                    }
+
+                    item.quantity = Math.max(1, Math.min(Number(item.quantity ?? 1), product.stock_quantity));
+                    this.recalculateCartItem(item);
+                    this.clampOrderDiscount();
+                },
+                updateDiscount(item) {
+                    item.discount = Math.max(0, Number(item.discount ?? 0));
+                    this.recalculateCartItem(item);
+                    this.clampOrderDiscount();
+                },
+                removeFromCart(productId) {
+                    this.cart = this.cart.filter((item) => item.product_id !== productId);
+                    this.clampOrderDiscount();
+                },
+                clearCart() {
+                    this.cart = [];
+                    this.orderDiscount = 0;
+                    this.amountPaid = 0;
+                    this.paymentType = 'paid';
+                    this.customerId = null;
+                    this.paymentMethodId = this.defaultPaymentMethodId;
+                    this.holdName = '';
+                },
+                applyBarcode() {
+                    const code = (this.scanner.input ?? '').trim().toLowerCase();
+                    if (code === '') {
+                        return;
+                    }
+
+                    const product = this.products.find((item) => [item.barcode, item.sku]
+                        .filter(Boolean)
+                        .some((value) => value.toLowerCase() === code));
+
+                    if (product) {
+                        this.addToCart(product);
+                    }
+
+                    this.scanner.input = '';
+                },
+                checkout() {
+                    if (this.cart.length === 0 || this.isProcessing) {
+                        return;
+                    }
+
+                    this.isProcessing = true;
+                    Livewire.dispatch('pos:checkout', { payload: this.buildPayload() });
+                },
+                holdCurrentOrder() {
+                    if (this.cart.length === 0 || this.isProcessing) {
+                        return;
+                    }
+
+                    this.isProcessing = true;
+                    Livewire.dispatch('pos:hold-cart', { payload: this.buildPayload() });
+                },
+                resumeHeldOrder(heldOrderId) {
+                    if (this.isProcessing) {
+                        return;
+                    }
+
+                    this.isProcessing = true;
+                    Livewire.dispatch('pos:resume-held-order', { heldOrderId });
+                },
+                deleteHeldOrder(heldOrderId) {
+                    Livewire.dispatch('pos:delete-held-order', { heldOrderId });
+                },
+                handleCheckoutCompleted({ sale, recentSales, lastSaleId, products } = {}) {
+                    this.isProcessing = false;
+
+                    if (!sale) {
+                        return;
+                    }
+
+                    this.recentSales = Array.isArray(recentSales) ? recentSales : this.recentSales;
+                    this.products = Array.isArray(products) ? products : this.products;
+                    this.clearCart();
+                    this.lastSaleId = lastSaleId ?? sale.id ?? null;
+
+                    if (sale.invoice_url) {
+                        window.open(sale.invoice_url, '_blank');
+                    }
+                },
+                handleHoldCompleted({ heldOrder, heldOrders } = {}) {
+                    this.isProcessing = false;
+                    if (Array.isArray(heldOrders)) {
+                        this.heldOrders = heldOrders;
+                    } else if (heldOrder) {
+                        this.heldOrders.unshift(heldOrder);
+                    }
+                    if (heldOrder) {
+                        this.clearCart();
+                    }
+                },
+                handleHeldOrderDeleted(heldOrderId) {
+                    if (!heldOrderId) {
+                        return;
+                    }
+                    this.heldOrders = this.heldOrders.filter((order) => order.id !== heldOrderId);
+                },
+                handleHeldOrderResumed({ cart, defaults, heldOrders } = {}) {
+                    this.isProcessing = false;
+
+                    if (Array.isArray(cart)) {
+                        this.cart = cart.map((item) => this.enrichCartItem(item));
+                    }
+
+                    if (defaults) {
+                        this.customerId = defaults.customer_id ?? null;
+                        this.paymentMethodId = defaults.payment_method_id ?? this.defaultPaymentMethodId;
+                        this.paymentType = defaults.payment_type ?? 'paid';
+                        this.orderDiscount = Number(defaults.order_discount ?? 0);
+                        this.amountPaid = Number(defaults.amount_paid ?? 0);
+                        this.lastSaleId = defaults.last_sale_id ?? null;
+                    }
+
+                    if (Array.isArray(heldOrders)) {
+                        this.heldOrders = heldOrders;
+                    }
+
+                    this.clampOrderDiscount();
+                },
+                buildPayload() {
+                    return {
+                        customer_id: this.customerId,
+                        payment_method_id: this.paymentMethodId,
+                        payment_type: this.paymentType,
+                        order_discount: this.orderDiscount,
+                        amount_paid: this.amountPaid,
+                        hold_name: this.holdName,
+                        cart: this.cart.map((item) => ({
+                            product_id: item.product_id,
+                            name: item.name,
+                            sku: item.sku,
+                            barcode: item.barcode,
+                            unit_price: item.unit_price,
+                            tax_rate: item.tax_rate,
+                            quantity: item.quantity,
+                            discount: item.discount,
+                        })),
+                    };
+                },
+                createCartItem(product) {
+                    return {
+                        product_id: product.id,
+                        name: product.name,
+                        sku: product.sku,
+                        barcode: product.barcode,
+                        unit_price: Number(product.unit_price ?? 0),
+                        tax_rate: Number(product.tax_rate ?? 0),
+                        quantity: 1,
+                        discount: 0,
+                        line_subtotal: 0,
+                        line_net: 0,
+                        line_total: 0,
+                    };
+                },
+                enrichCartItem(item) {
+                    const product = this.productById(item.product_id);
+                    const quantity = Math.max(1, Number(item.quantity ?? 1));
+                    return this.recalculateCartItem({
+                        product_id: item.product_id,
+                        name: item.name,
+                        sku: item.sku,
+                        barcode: item.barcode,
+                        unit_price: Number(item.unit_price ?? product?.unit_price ?? 0),
+                        tax_rate: Number(item.tax_rate ?? product?.tax_rate ?? 0),
+                        quantity: product ? Math.min(quantity, product.stock_quantity) : quantity,
+                        discount: Number(item.discount ?? 0),
+                    });
+                },
+                recalculateCartItem(item) {
+                    const product = this.productById(item.product_id);
+                    if (product) {
+                        item.quantity = Math.max(1, Math.min(Number(item.quantity ?? 1), product.stock_quantity));
+                        item.unit_price = Number(product.unit_price ?? item.unit_price ?? 0);
+                        item.tax_rate = Number(product.tax_rate ?? item.tax_rate ?? 0);
+                    } else {
+                        item.quantity = Math.max(1, Number(item.quantity ?? 1));
+                        item.unit_price = Number(item.unit_price ?? 0);
+                        item.tax_rate = Number(item.tax_rate ?? 0);
+                    }
+
+                    item.discount = Math.max(0, Number(item.discount ?? 0));
+
+                    item.line_subtotal = Math.max(item.quantity * item.unit_price, 0);
+                    item.line_net = Math.max(item.line_subtotal - item.discount, 0);
+                    item.line_total = item.line_net;
+
+                    return item;
+                },
+                clampOrderDiscount() {
+                    const maxDiscount = Math.max(this.subtotal - this.lineDiscount, 0);
+                    if (this.orderDiscount > maxDiscount) {
+                        this.orderDiscount = Number(maxDiscount.toFixed(2));
+                    }
+                },
+                productById(productId) {
+                    return this.products.find((item) => item.id === productId) ?? null;
+                },
+            }));
+        });
+    </script>
+@endpush

@@ -50,9 +50,9 @@
                 <tr>
                     <td>{{ $item->product->name ?? 'Product' }}</td>
                     <td>{{ $item->quantity }}</td>
-                    <td>₦{{ number_format($item->unit_price, 2) }}</td>
-                    <td>₦{{ number_format($item->discount_amount, 2) }}</td>
-                    <td class="text-right">₦{{ number_format(($item->quantity * $item->unit_price) - $item->discount_amount, 2) }}</td>
+                    <td>रू{{ number_format($item->unit_price, 2) }}</td>
+                    <td>रू{{ number_format($item->discount_amount, 2) }}</td>
+                    <td class="text-right">रू{{ number_format(($item->quantity * $item->unit_price) - $item->discount_amount, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -62,27 +62,27 @@
         <table>
             <tr>
                 <td>Subtotal</td>
-                <td class="text-right">₦{{ number_format($sale->total_amount, 2) }}</td>
+                <td class="text-right">रू{{ number_format($sale->total_amount, 2) }}</td>
             </tr>
             <tr>
                 <td>Discounts</td>
-                <td class="text-right">₦{{ number_format($sale->discount_amount, 2) }}</td>
+                <td class="text-right">रू{{ number_format($sale->discount_amount, 2) }}</td>
             </tr>
             <tr>
                 <td>Tax</td>
-                <td class="text-right">₦{{ number_format($sale->tax_amount, 2) }}</td>
+                <td class="text-right">रू{{ number_format($sale->tax_amount, 2) }}</td>
             </tr>
             <tr>
                 <td style="font-weight: 600;">Grand Total</td>
-                <td class="text-right" style="font-weight: 600;">₦{{ number_format($sale->grand_total, 2) }}</td>
+                <td class="text-right" style="font-weight: 600;">रू{{ number_format($sale->grand_total, 2) }}</td>
             </tr>
             <tr>
                 <td>Amount Paid</td>
-                <td class="text-right">₦{{ number_format($sale->amount_paid, 2) }}</td>
+                <td class="text-right">रू{{ number_format($sale->amount_paid, 2) }}</td>
             </tr>
             <tr>
                 <td>Balance Due</td>
-                <td class="text-right">₦{{ number_format($sale->amount_due, 2) }}</td>
+                <td class="text-right">रू{{ number_format($sale->amount_due, 2) }}</td>
             </tr>
         </table>
     </div>

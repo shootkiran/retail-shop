@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\Customers\Schemas;
 
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 
 class CustomerForm
 {
@@ -42,13 +42,13 @@ class CustomerForm
                 ->schema([
                     TextInput::make('credit_limit')
                         ->numeric()
-                        ->prefix('₦')
+                        ->prefix('रू')
                         ->default(0)
                         ->minValue(0),
                     TextInput::make('outstanding_balance')
                         ->disabled()
                         ->numeric()
-                        ->prefix('₦')
+                        ->prefix('रू')
                         ->dehydrated(),
                 ]),
         ]);

@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\ProductCategories\Schemas;
 
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
 
 class ProductCategoryForm
 {

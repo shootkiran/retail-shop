@@ -4,13 +4,13 @@ namespace App\Filament\Resources\Purchases\Schemas;
 
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
 
 class PurchaseForm
 {
@@ -74,14 +74,14 @@ class PurchaseForm
                                 ->columnSpan(1),
                             TextInput::make('unit_cost')
                                 ->numeric()
-                                ->prefix('₦')
+                                ->prefix('रू')
                                 ->minValue(0)
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Set $set, Get $get) => $set('total_amount', self::calculateLineTotal($get)))
                                 ->columnSpan(1),
                             TextInput::make('discount_amount')
                                 ->numeric()
-                                ->prefix('₦')
+                                ->prefix('रू')
                                 ->default(0)
                                 ->minValue(0)
                                 ->live(onBlur: true)
@@ -89,7 +89,7 @@ class PurchaseForm
                                 ->columnSpan(1),
                             TextInput::make('total_amount')
                                 ->numeric()
-                                ->prefix('₦')
+                                ->prefix('रू')
                                 ->default(0)
                                 ->readOnly()
                                 ->dehydrated()
@@ -103,35 +103,35 @@ class PurchaseForm
                 ->schema([
                     TextInput::make('total_amount')
                         ->numeric()
-                        ->prefix('₦')
+                        ->prefix('रू')
                         ->readOnly()
                         ->dehydrated(),
                     TextInput::make('discount_amount')
                         ->numeric()
-                        ->prefix('₦')
+                        ->prefix('रू')
                         ->readOnly()
                         ->dehydrated(),
                     TextInput::make('tax_amount')
                         ->numeric()
-                        ->prefix('₦')
+                        ->prefix('रू')
                         ->default(0)
                         ->live(onBlur: true)
                         ->afterStateUpdated(fn (Set $set, Get $get) => self::updateTotals($get, $set)),
                     TextInput::make('grand_total')
                         ->numeric()
-                        ->prefix('₦')
+                        ->prefix('रू')
                         ->readOnly()
                         ->dehydrated(),
                     TextInput::make('amount_paid')
                         ->numeric()
-                        ->prefix('₦')
+                        ->prefix('रू')
                         ->default(0)
                         ->minValue(0)
                         ->live(onBlur: true)
                         ->afterStateUpdated(fn (Set $set, Get $get) => self::updateTotals($get, $set)),
                     TextInput::make('amount_due')
                         ->numeric()
-                        ->prefix('₦')
+                        ->prefix('रू')
                         ->readOnly()
                         ->dehydrated(),
                 ]),

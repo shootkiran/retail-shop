@@ -170,6 +170,34 @@ class DatabaseSeeder extends Seeder
             );
         });
 
+        $faker = fake();
+        $categoryPool = $categories->values();
+        $vendorPool = $vendors->values();
+
+        foreach (range(1, 1000) as $index) {
+            $sku = sprintf('TEST-%04d', $index);
+            $barcode = sprintf('900000%06d', $index);
+            $unitCost = $faker->randomFloat(2, 0.5, 80);
+            $unitPrice = $unitCost + $faker->randomFloat(2, 0.2, 20);
+
+            ProductItem::updateOrCreate(
+                ['sku' => $sku],
+                [
+                    'product_category_id' => $categoryPool->random()->id,
+                    'vendor_id' => $vendorPool->random()->id,
+                    'name' => "Test Product {$index}",
+                    'barcode' => $barcode,
+                    'description' => $faker->sentence(),
+                    'unit_cost' => $unitCost,
+                    'unit_price' => max($unitPrice, $unitCost + 0.1),
+                    'tax_rate' => $faker->randomElement([0, 5, 7.5, 13]),
+                    'stock_quantity' => $faker->numberBetween(0, 500),
+                    'reorder_level' => $faker->numberBetween(5, 50),
+                    'is_active' => true,
+                ],
+            );
+        }
+
         collect([
             [
                 'name' => 'Cash',

@@ -11,15 +11,14 @@ use App\Models\Sale;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use UnitEnum;
 use Filament\Pages\Page;
+use Livewire\Attributes\On;
 
 class POS extends Page
 {
@@ -41,7 +40,7 @@ class POS extends Page
 
     public array $cart = [];
 
-    public ?int $activeCategory = null;
+    public $activeCategory = null;
 
     public string $search = '';
 
@@ -57,145 +56,358 @@ class POS extends Page
 
     public ?int $heldOrderId = null;
 
-    protected $queryString = [
-        'activeCategory' => ['except' => null],
-    ];
-
     public function mount(): void
     {
         $this->cart = [];
         $this->paymentMethodId = $this->resolveDefaultPaymentMethodId();
     }
 
-    public function updatedOrderDiscount($value): void
+    #[On('pos:checkout')]
+    public function checkoutFromClient(array $payload = []): void
     {
-        $this->orderDiscount = $this->sanitizeMoney($value);
-        $this->clampOrderDiscount();
+        $payload = $this->normalizeEventPayload($payload);
+        $this->hydrateComponentState($payload);
+
+        $sale = $this->checkout();
+
+        if (! $sale instanceof Sale) {
+            $this->dispatch(
+                'pos:checkout-completed',
+                sale: null,
+                recentSales: $this->recentSalesPayload(),
+                lastSaleId: $this->lastSaleId,
+                products: $this->productsPayload(),
+            );
+
+            return;
+        }
+
+        $this->dispatch(
+            'pos:checkout-completed',
+            sale: $this->formatSalePayload($sale),
+            recentSales: $this->recentSalesPayload(),
+            lastSaleId: $this->lastSaleId,
+            products: $this->productsPayload(),
+        );
     }
 
-    public function updatedAmountPaid($value): void
+    #[On('pos:hold-cart')]
+    public function holdOrderFromClient(array $payload = []): void
     {
-        $this->amountPaid = $this->sanitizeMoney($value);
+        $payload = $this->normalizeEventPayload($payload);
+        $this->hydrateComponentState($payload);
+
+        $heldOrder = $this->holdOrder();
+
+        if (! $heldOrder instanceof HeldOrder) {
+            $this->dispatch(
+                'pos:hold-completed',
+                heldOrder: null,
+                heldOrders: $this->heldOrdersPayload(),
+            );
+
+            return;
+        }
+
+        $this->dispatch(
+            'pos:hold-completed',
+            heldOrder: $this->formatHeldOrderPayload($heldOrder),
+            heldOrders: $this->heldOrdersPayload(),
+        );
     }
 
-    public function updatedCart($value, $key): void
+    #[On('pos:delete-held-order')]
+    public function deleteHeldOrder(array $payload = []): void
     {
-        if (! str_contains($key, '.')) {
+        $payload = $this->normalizeEventPayload($payload);
+        $heldOrderId = isset($payload['heldOrderId']) ? (int) $payload['heldOrderId'] : null;
+
+        if (! $heldOrderId) {
             return;
         }
 
-        [$rowKey, $field] = explode('.', $key);
+        $heldOrder = HeldOrder::query()->find($heldOrderId);
 
-        if (! isset($this->cart[$rowKey])) {
+        if (! $heldOrder instanceof HeldOrder) {
             return;
         }
 
-        if ($field === 'quantity') {
-            $quantity = max(1, (int) $value);
-            $productId = (int) ($this->cart[$rowKey]['product_id'] ?? 0);
-            $product = $productId ? ProductItem::find($productId) : null;
+        $heldOrder->delete();
 
-            if ($product instanceof ProductItem) {
-                $available = max($product->stock_quantity, 0);
-                $quantity = min($quantity, $available ?: $quantity);
-                if ($available <= 0) {
-                    Notification::make()
-                        ->title('Out of stock')
-                        ->body($product->name . ' is currently unavailable.')
-                        ->warning()
-                        ->send();
-                    $quantity = 0;
-                } elseif ($quantity < (int) $value) {
-                    Notification::make()
-                        ->title('Limited stock')
-                        ->body('Only ' . $available . ' units of ' . $product->name . ' are available.')
-                        ->warning()
-                        ->send();
-                }
-            }
-
-            if ($quantity <= 0) {
-                unset($this->cart[$rowKey]);
-                return;
-            }
-
-            $this->cart[$rowKey]['quantity'] = $quantity;
-        }
-
-        if ($field === 'discount') {
-            $this->cart[$rowKey]['discount'] = $this->sanitizeMoney($value);
-        }
-
-        $this->recalculateLine($rowKey);
-        $this->clampOrderDiscount();
+        $this->dispatch('pos:held-order-deleted', heldOrderId: $heldOrderId);
     }
 
-    public function addProduct(int $productId): void
+    public function getFrontendStateProperty(): array
     {
-        $product = ProductItem::query()
-            ->whereKey($productId)
-            ->where('is_active', true)
-            ->first();
-
-        if (! $product instanceof ProductItem) {
-            Notification::make()
-                ->title('Product unavailable')
-                ->body('The selected product could not be found.')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        if ($product->stock_quantity <= 0) {
-            Notification::make()
-                ->title('Out of stock')
-                ->body($product->name . ' is currently unavailable.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        $key = (string) $product->id;
-        $existingQuantity = $this->cart[$key]['quantity'] ?? 0;
-        $newQuantity = min($existingQuantity + 1, max($product->stock_quantity, 0));
-
-        if ($newQuantity === $existingQuantity) {
-            Notification::make()
-                ->title('Stock limit reached')
-                ->body('No additional units of ' . $product->name . ' are available.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        $this->cart[$key] = [
-            'product_id' => $product->id,
-            'name' => $product->name,
-            'sku' => $product->sku,
-            'barcode' => $product->barcode,
-            'unit_price' => (float) $product->unit_price,
-            'tax_rate' => (float) $product->tax_rate,
-            'quantity' => $newQuantity,
-            'discount' => $this->cart[$key]['discount'] ?? 0.0,
+        return [
+            'categories' => $this->categoriesPayload(),
+            'products' => $this->productsPayload(),
+            'customers' => $this->customersPayload(),
+            'paymentMethods' => $this->paymentMethodsPayload(),
+            'heldOrders' => $this->heldOrdersPayload(),
+            'recentSales' => $this->recentSalesPayload(),
+            'defaults' => $this->defaultsPayload(),
         ];
+    }
 
-        $this->recalculateLine($key);
+    public function getInvoiceUrlTemplateProperty(): string
+    {
+        return route('sales.invoice', ['sale' => '__SALE__']);
+    }
+
+    protected function hydrateComponentState(array $payload = []): void
+    {
+        $payload = $this->normalizeEventPayload($payload);
+
+        $this->customerId = $this->nullableInt($payload['customer_id'] ?? null);
+        $this->paymentMethodId = $this->nullableInt($payload['payment_method_id'] ?? $this->resolveDefaultPaymentMethodId());
+        $this->paymentType = in_array($payload['payment_type'] ?? null, ['paid', 'credit'], true)
+            ? $payload['payment_type']
+            : 'paid';
+        $this->orderDiscount = $this->sanitizeMoney($payload['order_discount'] ?? 0);
+        $this->amountPaid = $this->sanitizeMoney($payload['amount_paid'] ?? 0);
+        $this->holdName = trim((string) ($payload['hold_name'] ?? ''));
+
+        $this->hydrateCartFromPayload($payload['cart'] ?? []);
+    }
+
+    protected function hydrateCartFromPayload(array $items): void
+    {
+        $this->cart = [];
+
+        foreach ($items as $item) {
+            $productId = (int) ($item['product_id'] ?? 0);
+
+            if ($productId <= 0) {
+                continue;
+            }
+
+            $product = ProductItem::query()
+                ->select(['id', 'name', 'sku', 'barcode', 'unit_price', 'tax_rate', 'stock_quantity'])
+                ->find($productId);
+
+            if (! $product instanceof ProductItem) {
+                continue;
+            }
+
+            $rowKey = (string) $productId;
+            $availableStock = max((int) $product->stock_quantity, 0);
+            $requestedQuantity = max(1, (int) ($item['quantity'] ?? 1));
+            $quantity = $availableStock > 0 ? min($requestedQuantity, $availableStock) : $requestedQuantity;
+
+            $this->cart[$rowKey] = [
+                'product_id' => $productId,
+                'name' => $product->name,
+                'sku' => $product->sku,
+                'barcode' => $product->barcode,
+                'unit_price' => round((float) $product->unit_price, 2),
+                'tax_rate' => round(max((float) $product->tax_rate, 0), 2),
+                'quantity' => $quantity,
+                'discount' => $this->sanitizeMoney($item['discount'] ?? 0),
+            ];
+
+            $this->recalculateLine($rowKey);
+        }
+
         $this->clampOrderDiscount();
+    }
+
+    protected function formatHeldOrderPayload(HeldOrder $heldOrder): array
+    {
+        $items = collect(data_get($heldOrder->cart, 'items', []))
+            ->map(fn ($item) => [
+                'product_id' => (int) ($item['product_id'] ?? 0),
+                'name' => $item['name'] ?? 'Product',
+                'sku' => $item['sku'] ?? null,
+                'barcode' => $item['barcode'] ?? null,
+                'unit_price' => round((float) ($item['unit_price'] ?? 0), 2),
+                'tax_rate' => round(max((float) ($item['tax_rate'] ?? 0), 0), 2),
+                'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
+                'discount' => $this->sanitizeMoney($item['discount'] ?? 0),
+            ])
+            ->filter(fn ($item) => $item['product_id'] > 0)
+            ->values()
+            ->all();
+
+        return [
+            'id' => $heldOrder->id,
+            'label' => $heldOrder->label ?? 'Untitled order',
+            'customer_id' => $heldOrder->customer_id,
+            'customer_name' => $heldOrder->customer?->name ?? 'Walk-in customer',
+            'payment_method_id' => $heldOrder->payment_method_id,
+            'payment_type' => $heldOrder->payment_type,
+            'order_discount' => (float) $heldOrder->order_discount,
+            'amount_paid' => (float) $heldOrder->amount_paid,
+            'cart' => $items,
+            'preview' => $this->buildHeldOrderPreview($items),
+            'updated_at_for_humans' => optional($heldOrder->updated_at)->diffForHumans() ?? '',
+        ];
+    }
+
+    protected function formatSalePayload(Sale $sale): array
+    {
+        return [
+            'id' => $sale->id,
+            'reference' => $sale->reference,
+            'grand_total' => (float) $sale->grand_total,
+            'sold_at_for_humans' => optional($sale->sold_at)->diffForHumans() ?? now()->diffForHumans(),
+            'invoice_url' => str_replace('__SALE__', (string) $sale->id, $this->invoiceUrlTemplate),
+        ];
+    }
+
+    protected function categoriesPayload(): array
+    {
+        return $this->categories
+            ->map(fn ($category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    protected function productsPayload(): array
+    {
+        return $this->products
+            ->map(fn ($product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sku' => $product->sku,
+                'barcode' => $product->barcode,
+                'unit_price' => (float) $product->unit_price,
+                'tax_rate' => (float) $product->tax_rate,
+                'stock_quantity' => (int) $product->stock_quantity,
+                'product_category_id' => $product->product_category_id,
+            ])
+            ->values()
+            ->all();
+    }
+
+    protected function customersPayload(): array
+    {
+        return $this->customers
+            ->map(fn ($customer) => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    protected function paymentMethodsPayload(): array
+    {
+        return $this->paymentMethods
+            ->map(fn ($method) => [
+                'id' => $method->id,
+                'name' => $method->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    protected function heldOrdersPayload(): array
+    {
+        return $this->heldOrders
+            ->map(fn ($heldOrder) => $this->formatHeldOrderPayload($heldOrder))
+            ->all();
+    }
+
+    protected function recentSalesPayload(): array
+    {
+        return $this->recentSales
+            ->map(fn ($sale) => [
+                'id' => $sale->id,
+                'reference' => $sale->reference,
+                'grand_total' => (float) $sale->grand_total,
+                'sold_at_for_humans' => optional($sale->sold_at)->diffForHumans() ?? '',
+            ])
+            ->all();
+    }
+
+    protected function buildHeldOrderPreview(array $items): string
+    {
+        if (empty($items)) {
+            return 'No items';
+        }
+
+        $previewItems = collect($items)
+            ->take(3)
+            ->map(fn ($item) => $item['quantity'] . ' x ' . $item['name'])
+            ->implode(', ');
+
+        $remaining = max(count($items) - 3, 0);
+
+        if ($remaining > 0) {
+            $previewItems .= ' +' . $remaining . ' more';
+        }
+
+        return $previewItems;
+    }
+
+    protected function normalizeEventPayload($payload): array
+    {
+        if (is_array($payload)) {
+            if (array_key_exists('payload', $payload) && is_array($payload['payload'])) {
+                return $payload['payload'];
+            }
+
+            return $payload;
+        }
+
+        return [];
+    }
+
+    protected function nullableInt($value): ?int
+    {
+        if ($value === null || $value === '' || $value === 'null') {
+            return null;
+        }
+
+        return (int) $value;
+    }
+
+    #[On('pos:resume-held-order')]
+    public function resumeHeldOrderFromClient(array $payload = []): void
+    {
+        $payload = $this->normalizeEventPayload($payload);
+        $heldOrderId = isset($payload['heldOrderId']) ? (int) $payload['heldOrderId'] : null;
+
+        if (! $heldOrderId) {
+            return;
+        }
+
+        $heldOrder = HeldOrder::query()
+            ->with('customer:id,name')
+            ->find($heldOrderId);
+
+        if (! $heldOrder instanceof HeldOrder) {
+            return;
+        }
+
+        $this->customerId = $heldOrder->customer_id;
+        $this->paymentMethodId = $heldOrder->payment_method_id ?: $this->resolveDefaultPaymentMethodId();
+        $this->paymentType = $heldOrder->payment_type;
+        $this->orderDiscount = (float) $heldOrder->order_discount;
+        $this->amountPaid = (float) $heldOrder->amount_paid;
+        $this->lastSaleId = null;
+
+        $this->hydrateCartFromPayload(data_get($heldOrder->cart, 'items', []));
+
+        $label = $heldOrder->label ?? 'Held order';
+        $heldOrder->delete();
 
         Notification::make()
-            ->title('Added to cart')
-            ->body($product->name . ' was added to the cart.')
+            ->title('Order resumed')
+            ->body('Held order "' . $label . '" loaded into the cart.')
             ->success()
             ->send();
-    }
 
-    public function removeItem(string $rowKey): void
-    {
-        unset($this->cart[$rowKey]);
-        $this->clampOrderDiscount();
+        $this->dispatch(
+            'pos:held-order-resumed',
+            cart: $this->cartPayload(),
+            defaults: $this->defaultsPayload(),
+            heldOrders: $this->heldOrdersPayload(),
+        );
     }
 
     public function clearCart(): void
@@ -208,46 +420,9 @@ class POS extends Page
         $this->amountPaid = 0.0;
         $this->holdName = '';
         $this->heldOrderId = null;
-        $this->search = '';
-        $this->barcode = '';
     }
 
-    public function selectCategory(?int $categoryId): void
-    {
-        $this->activeCategory = $categoryId;
-    }
-
-    public function scanBarcode(): void
-    {
-        $code = trim($this->barcode);
-
-        if ($code === '') {
-            return;
-        }
-
-        $product = ProductItem::query()
-            ->where(fn (Builder $query) => $query
-                ->where('barcode', $code)
-                ->orWhere('sku', $code))
-            ->where('is_active', true)
-            ->first();
-
-        $this->barcode = '';
-
-        if (! $product instanceof ProductItem) {
-            Notification::make()
-                ->title('No match found')
-                ->body('No product matches the scanned code.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        $this->addProduct($product->id);
-    }
-
-    public function holdOrder(): void
+    public function holdOrder(): ?HeldOrder
     {
         if (empty($this->cart)) {
             Notification::make()
@@ -256,12 +431,12 @@ class POS extends Page
                 ->warning()
                 ->send();
 
-            return;
+            return null;
         }
 
         $label = trim($this->holdName) ?: 'Hold ' . now()->format('H:i');
 
-        HeldOrder::create([
+        $heldOrder = HeldOrder::create([
             'user_id' => Auth::id(),
             'customer_id' => $this->customerId,
             'payment_method_id' => $this->paymentMethodId,
@@ -294,105 +469,11 @@ class POS extends Page
             ->body('The order was saved as "' . $label . '" and can be resumed later.')
             ->success()
             ->send();
+
+        return $heldOrder->refresh()->loadMissing('customer:id,name');
     }
 
-    public function resumeOrder(int $orderId): void
-    {
-        $heldOrder = HeldOrder::query()->find($orderId);
-
-        if (! $heldOrder instanceof HeldOrder) {
-            Notification::make()
-                ->title('Held order missing')
-                ->body('The selected held order could not be found.')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        $items = Arr::get($heldOrder->cart, 'items', []);
-
-        $this->cart = collect($items)
-            ->mapWithKeys(function ($item) {
-                $productId = (int) ($item['product_id'] ?? $item['id'] ?? 0);
-
-                if ($productId <= 0) {
-                    return [];
-                }
-
-                $rowKey = (string) $productId;
-
-                return [
-                    $rowKey => [
-                        'product_id' => $productId,
-                        'name' => $item['name'] ?? 'Product',
-                        'sku' => $item['sku'] ?? null,
-                        'barcode' => $item['barcode'] ?? null,
-                        'unit_price' => (float) ($item['unit_price'] ?? 0),
-                        'tax_rate' => (float) ($item['tax_rate'] ?? 0),
-                        'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
-                        'discount' => $this->sanitizeMoney($item['discount'] ?? 0),
-                    ],
-                ];
-            })
-            ->all();
-
-        foreach (array_keys($this->cart) as $rowKey) {
-            $productId = (int) ($this->cart[$rowKey]['product_id'] ?? 0);
-            $product = $productId ? ProductItem::find($productId) : null;
-
-            if ($product instanceof ProductItem) {
-                $available = max($product->stock_quantity, 0);
-                $this->cart[$rowKey]['tax_rate'] = (float) $product->tax_rate;
-
-                if ($available <= 0) {
-                    unset($this->cart[$rowKey]);
-
-                    Notification::make()
-                        ->title('Out of stock')
-                        ->body($product->name . ' is no longer available and was removed from the cart.')
-                        ->warning()
-                        ->send();
-
-                    continue;
-                }
-
-                if ($this->cart[$rowKey]['quantity'] > $available) {
-                    $this->cart[$rowKey]['quantity'] = $available;
-
-                    Notification::make()
-                        ->title('Stock adjusted')
-                        ->body('Quantity for ' . $product->name . ' was reduced to available stock (' . $available . ').')
-                        ->warning()
-                        ->send();
-                }
-            }
-
-            $this->recalculateLine($rowKey);
-        }
-
-        $this->customerId = $heldOrder->customer_id;
-        $this->paymentMethodId = $heldOrder->payment_method_id ?: $this->resolveDefaultPaymentMethodId();
-        $this->paymentType = $heldOrder->payment_type;
-        $this->orderDiscount = (float) $heldOrder->order_discount;
-        $this->amountPaid = (float) $heldOrder->amount_paid;
-        $this->holdName = $heldOrder->label;
-        $this->heldOrderId = $heldOrder->id;
-        $this->lastSaleId = null;
-
-        $label = $heldOrder->label;
-        $heldOrder->delete();
-
-        $this->clampOrderDiscount();
-
-        Notification::make()
-            ->title('Order resumed')
-            ->body('Held order "' . $label . '" loaded into the cart.')
-            ->success()
-            ->send();
-    }
-
-    public function checkout(): void
+    public function checkout(): ?Sale
     {
         if (empty($this->cart)) {
             Notification::make()
@@ -401,7 +482,7 @@ class POS extends Page
                 ->warning()
                 ->send();
 
-            return;
+            return null;
         }
 
         $this->clampOrderDiscount();
@@ -464,7 +545,7 @@ class POS extends Page
                 ->danger()
                 ->send();
 
-            return;
+            return null;
         }
 
         $saleId = $sale->id;
@@ -478,6 +559,38 @@ class POS extends Page
             ->body('Sale ' . $saleReference . ' has been recorded successfully.')
             ->success()
             ->send();
+
+        return $sale;
+    }
+
+    protected function cartPayload(): array
+    {
+        return collect($this->cart)
+            ->values()
+            ->map(fn (array $item) => [
+                'product_id' => $item['product_id'],
+                'name' => $item['name'] ?? 'Product',
+                'sku' => $item['sku'] ?? null,
+                'barcode' => $item['barcode'] ?? null,
+                'unit_price' => (float) ($item['unit_price'] ?? 0),
+                'tax_rate' => (float) ($item['tax_rate'] ?? 0),
+                'quantity' => (int) ($item['quantity'] ?? 0),
+                'discount' => (float) ($item['discount'] ?? 0),
+            ])
+            ->all();
+    }
+
+    protected function defaultsPayload(): array
+    {
+        return [
+            'customer_id' => $this->customerId,
+            'payment_method_id' => $this->paymentMethodId,
+            'payment_type' => $this->paymentType,
+            'order_discount' => $this->orderDiscount,
+            'amount_paid' => $this->amountPaid,
+            'last_sale_id' => $this->lastSaleId,
+            'invoice_url_template' => $this->invoiceUrlTemplate,
+        ];
     }
 
     public function getCategoriesProperty(): Collection
@@ -492,18 +605,8 @@ class POS extends Page
         return ProductItem::query()
             ->select(['id', 'name', 'sku', 'barcode', 'unit_price', 'tax_rate', 'stock_quantity', 'product_category_id'])
             ->where('is_active', true)
-            ->when($this->activeCategory, fn ($query) => $query->where('product_category_id', $this->activeCategory))
-            ->when($this->search !== '', function ($query) {
-                $search = $this->search;
-
-                $query->where(function ($subQuery) use ($search) {
-                    $subQuery->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('sku', 'like', '%' . $search . '%')
-                        ->orWhere('barcode', 'like', '%' . $search . '%');
-                });
-            })
             ->orderBy('name')
-            ->limit(30)
+            ->limit(200)
             ->get();
     }
 
