@@ -1,5 +1,81 @@
+@push('styles')
+    <style>
+        .pos-compact,
+        .pos-compact * {
+            font-size: 0.625rem !important;
+            line-height: 1.1;
+        }
+
+        .pos-compact .gap-6,
+        .pos-compact .gap-5,
+        .pos-compact .gap-4,
+        .pos-compact .gap-3,
+        .pos-compact .gap-2,
+        .pos-compact .gap-1 {
+            gap: 0.25rem !important;
+        }
+
+        .pos-compact .space-y-4 > :not([hidden]) ~ :not([hidden]),
+        .pos-compact .space-y-3 > :not([hidden]) ~ :not([hidden]),
+        .pos-compact .space-y-2\.5 > :not([hidden]) ~ :not([hidden]),
+        .pos-compact .space-y-2 > :not([hidden]) ~ :not([hidden]),
+        .pos-compact .space-y-1 > :not([hidden]) ~ :not([hidden]) {
+            margin-top: 0.25rem !important;
+        }
+
+        .pos-compact .px-4 {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+
+        .pos-compact .py-3 {
+            padding-top: 0.25rem !important;
+            padding-bottom: 0.25rem !important;
+        }
+
+        .pos-compact .py-6 {
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+        }
+
+        .pos-compact .p-4 {
+            padding: 0.5rem !important;
+        }
+
+        .pos-compact table th,
+        .pos-compact table td {
+            padding: 0.25rem 0.35rem !important;
+        }
+
+        .pos-compact input,
+        .pos-compact select,
+        .pos-compact textarea,
+        .pos-compact .fi-input,
+        .pos-compact .fi-select,
+        .pos-compact button,
+        .pos-compact .fi-button {
+            padding: 0.25rem 0.4rem !important;
+            min-height: auto !important;
+        }
+    </style>
+@endpush
+
 <x-filament-panels::page>
-    <div class="grid gap-4 xl:grid-cols-3">
+    <div
+        class="pos-compact"
+        x-data
+        x-init="
+            const handler = (event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+                    event.preventDefault();
+                    $wire.clearCart();
+                }
+            };
+            window.addEventListener('keydown', handler);
+            return () => window.removeEventListener('keydown', handler);
+        "
+    >
+        <div class="grid gap-4 xl:grid-cols-3">
         <div class="space-y-4 xl:col-span-2">
             <x-filament::section>
                 <x-slot name="heading">Quick Actions</x-slot>
@@ -38,17 +114,10 @@
                 </div>
             </x-filament::section>
 
-            <x-filament::section>
-                <x-slot name="heading">Held Orders</x-slot>
+            @if ($this->heldOrders->isNotEmpty())
+                <x-filament::section>
+                    <x-slot name="heading">Held Orders</x-slot>
 
-                @if ($this->heldOrders->isEmpty())
-                    <x-filament::empty-state icon="heroicon-o-clock">
-                        <x-slot name="heading">No held orders</x-slot>
-                        <x-slot name="description">
-                            Hold an order to see it listed here for quick resuming.
-                        </x-slot>
-                    </x-filament::empty-state>
-                @else
                     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-white/10">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10 text-sm">
                             <thead class="bg-gray-50 dark:bg-white/5">
@@ -105,8 +174,8 @@
                             </tbody>
                         </table>
                     </div>
-                @endif
-            </x-filament::section>
+                </x-filament::section>
+            @endif
 
             <x-filament::section>
                 <x-slot name="heading">Categories</x-slot>
@@ -123,7 +192,7 @@
 
                     @foreach ($this->categories as $category)
                         <x-filament::button
-                            size="sm"
+                            size="xs"
                             color="{{ $activeCategory === $category->id ? 'primary' : 'gray' }}"
                             wire:click="selectCategory({{ $category->id }})"
                             type="button"
@@ -392,5 +461,6 @@
                 </div>
             </x-filament::section>
         </div>
+    </div>
     </div>
 </x-filament-panels::page>

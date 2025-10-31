@@ -55,6 +55,13 @@ class ProductItemForm
                                 ->numeric()
                                 ->prefix('₦')
                                 ->minValue(0),
+                            TextInput::make('tax_rate')
+                                ->label('Tax Rate')
+                                ->numeric()
+                                ->suffix('%')
+                                ->minValue(0)
+                                ->maxValue(100)
+                                ->default(0),
                             TextInput::make('stock_quantity')
                                 ->numeric()
                                 ->minValue(0)

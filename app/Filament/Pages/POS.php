@@ -49,8 +49,6 @@ class POS extends Page
 
     public float $orderDiscount = 0.0;
 
-    public float $taxRate = 0.0;
-
     public float $amountPaid = 0.0;
 
     public string $holdName = '';
@@ -73,11 +71,6 @@ class POS extends Page
     {
         $this->orderDiscount = $this->sanitizeMoney($value);
         $this->clampOrderDiscount();
-    }
-
-    public function updatedTaxRate($value): void
-    {
-        $this->taxRate = max(0, round((float) $value, 2));
     }
 
     public function updatedAmountPaid($value): void
@@ -184,6 +177,7 @@ class POS extends Page
             'sku' => $product->sku,
             'barcode' => $product->barcode,
             'unit_price' => (float) $product->unit_price,
+            'tax_rate' => (float) $product->tax_rate,
             'quantity' => $newQuantity,
             'discount' => $this->cart[$key]['discount'] ?? 0.0,
         ];
@@ -211,7 +205,6 @@ class POS extends Page
         $this->paymentMethodId = $this->resolveDefaultPaymentMethodId();
         $this->paymentType = 'paid';
         $this->orderDiscount = 0.0;
-        $this->taxRate = 0.0;
         $this->amountPaid = 0.0;
         $this->holdName = '';
         $this->heldOrderId = null;
@@ -275,7 +268,6 @@ class POS extends Page
             'label' => Str::limit($label, 80),
             'payment_type' => $this->paymentType,
             'order_discount' => $this->orderDiscount,
-            'tax_rate' => $this->taxRate,
             'amount_paid' => $this->amountPaid,
             'cart' => [
                 'items' => collect($this->cart)
@@ -285,6 +277,7 @@ class POS extends Page
                         'sku' => $item['sku'],
                         'barcode' => $item['barcode'],
                         'unit_price' => $item['unit_price'],
+                        'tax_rate' => $item['tax_rate'] ?? 0,
                         'quantity' => $item['quantity'],
                         'discount' => $item['discount'] ?? 0,
                     ])
@@ -336,6 +329,7 @@ class POS extends Page
                         'sku' => $item['sku'] ?? null,
                         'barcode' => $item['barcode'] ?? null,
                         'unit_price' => (float) ($item['unit_price'] ?? 0),
+                        'tax_rate' => (float) ($item['tax_rate'] ?? 0),
                         'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
                         'discount' => $this->sanitizeMoney($item['discount'] ?? 0),
                     ],
@@ -349,6 +343,7 @@ class POS extends Page
 
             if ($product instanceof ProductItem) {
                 $available = max($product->stock_quantity, 0);
+                $this->cart[$rowKey]['tax_rate'] = (float) $product->tax_rate;
 
                 if ($available <= 0) {
                     unset($this->cart[$rowKey]);
@@ -380,7 +375,6 @@ class POS extends Page
         $this->paymentMethodId = $heldOrder->payment_method_id ?: $this->resolveDefaultPaymentMethodId();
         $this->paymentType = $heldOrder->payment_type;
         $this->orderDiscount = (float) $heldOrder->order_discount;
-        $this->taxRate = (float) $heldOrder->tax_rate;
         $this->amountPaid = (float) $heldOrder->amount_paid;
         $this->holdName = $heldOrder->label;
         $this->heldOrderId = $heldOrder->id;
@@ -415,8 +409,9 @@ class POS extends Page
         $subtotal = $this->subtotal;
         $lineDiscount = $this->lineDiscount;
         $totalDiscount = $lineDiscount + $this->orderDiscount;
+        $subtotalAfterDiscount = $this->subtotalAfterDiscount;
         $taxAmount = $this->taxAmount;
-        $grandTotal = max($subtotal - $totalDiscount + $taxAmount, 0);
+        $grandTotal = max($subtotalAfterDiscount + $taxAmount, 0);
         $amountPaid = min($this->amountPaid, $grandTotal);
         $amountDue = max($grandTotal - $amountPaid, 0);
         $paymentStatus = $this->resolvePaymentStatus($amountPaid, $amountDue);
@@ -449,6 +444,7 @@ class POS extends Page
                         'quantity' => $item['quantity'],
                         'unit_price' => $item['unit_price'],
                         'discount_amount' => $item['discount'] ?? 0,
+                        'total_amount' => $item['line_net'] ?? max(($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0) - ($item['discount'] ?? 0), 0),
                     ])->all()
                 );
 
@@ -494,7 +490,7 @@ class POS extends Page
     public function getProductsProperty(): Collection
     {
         return ProductItem::query()
-            ->select(['id', 'name', 'sku', 'barcode', 'unit_price', 'stock_quantity', 'product_category_id'])
+            ->select(['id', 'name', 'sku', 'barcode', 'unit_price', 'tax_rate', 'stock_quantity', 'product_category_id'])
             ->where('is_active', true)
             ->when($this->activeCategory, fn ($query) => $query->where('product_category_id', $this->activeCategory))
             ->when($this->search !== '', function ($query) {
@@ -546,7 +542,7 @@ class POS extends Page
     public function getSubtotalProperty(): float
     {
         return round(collect($this->cart)
-            ->sum(fn ($item) => ($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0)), 2);
+            ->sum(fn ($item) => $item['line_subtotal'] ?? (($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0))), 2);
     }
 
     public function getLineDiscountProperty(): float
@@ -554,9 +550,9 @@ class POS extends Page
         return round(collect($this->cart)->sum(fn ($item) => $item['discount'] ?? 0), 2);
     }
 
-    public function getTaxableAmountProperty(): float
+    public function getSubtotalAfterDiscountProperty(): float
     {
-        return max($this->subtotal - ($this->lineDiscount + $this->orderDiscount), 0);
+        return round(max($this->subtotal - ($this->lineDiscount + $this->orderDiscount), 0), 2);
     }
 
     protected function resolveDefaultPaymentMethodId(): ?int
@@ -584,12 +580,53 @@ class POS extends Page
 
     public function getTaxAmountProperty(): float
     {
-        return round($this->taxableAmount * ($this->taxRate / 100), 2);
+        $items = collect($this->cart);
+
+        if ($items->isEmpty()) {
+            return 0.0;
+        }
+
+        $lineTotals = $items->sum(function ($item) {
+            $quantity = max((int) ($item['quantity'] ?? 0), 0);
+            $unitPrice = (float) ($item['unit_price'] ?? 0);
+            $discount = (float) ($item['discount'] ?? 0);
+
+            $lineSubtotal = max($quantity * $unitPrice, 0);
+            return max($lineSubtotal - $discount, 0);
+        });
+
+        if ($lineTotals <= 0) {
+            return 0.0;
+        }
+
+        $orderDiscount = $this->orderDiscount;
+
+        $totalTax = $items->sum(function ($item) use ($lineTotals, $orderDiscount) {
+            $quantity = max((int) ($item['quantity'] ?? 0), 0);
+            $unitPrice = (float) ($item['unit_price'] ?? 0);
+            $discount = (float) ($item['discount'] ?? 0);
+            $taxRate = (float) ($item['tax_rate'] ?? 0);
+
+            $lineSubtotal = max($quantity * $unitPrice, 0);
+            $lineNet = max($lineSubtotal - $discount, 0);
+
+            if ($lineNet <= 0 || $taxRate <= 0) {
+                return 0.0;
+            }
+
+            $share = $lineNet / $lineTotals;
+            $orderDiscountShare = $share * $orderDiscount;
+            $taxableBase = max($lineNet - $orderDiscountShare, 0);
+
+            return round($taxableBase * $taxRate / 100, 2);
+        });
+
+        return round($totalTax, 2);
     }
 
     public function getGrandTotalProperty(): float
     {
-        return round(max($this->taxableAmount + $this->taxAmount, 0), 2);
+        return round(max($this->subtotalAfterDiscount + $this->taxAmount, 0), 2);
     }
 
     public function getAmountDueProperty(): float
@@ -608,9 +645,14 @@ class POS extends Page
         $item['quantity'] = max(1, (int) ($item['quantity'] ?? 1));
         $item['unit_price'] = round((float) ($item['unit_price'] ?? 0), 2);
         $item['discount'] = $this->sanitizeMoney($item['discount'] ?? 0);
+        $item['tax_rate'] = round(max((float) ($item['tax_rate'] ?? 0), 0), 2);
 
-        $lineTotal = ($item['quantity'] * $item['unit_price']) - $item['discount'];
-        $item['line_total'] = round(max($lineTotal, 0), 2);
+        $lineSubtotal = max($item['quantity'] * $item['unit_price'], 0);
+        $lineNet = max($lineSubtotal - $item['discount'], 0);
+
+        $item['line_subtotal'] = round($lineSubtotal, 2);
+        $item['line_net'] = round($lineNet, 2);
+        $item['line_total'] = $item['line_net'];
     }
 
     protected function clampOrderDiscount(): void

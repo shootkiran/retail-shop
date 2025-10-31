@@ -34,6 +34,10 @@ class ProductItemsTable
                     ->label('Price')
                     ->money('ngn')
                     ->sortable(),
+                TextColumn::make('tax_rate')
+                    ->label('Tax %')
+                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2) . '%')
+                    ->sortable(),
                 TextColumn::make('stock_quantity')
                     ->label('Stock')
                     ->sortable(),

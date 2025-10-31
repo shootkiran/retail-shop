@@ -20,6 +20,7 @@ class ProductItem extends Model
         'description',
         'unit_cost',
         'unit_price',
+        'tax_rate',
         'stock_quantity',
         'reorder_level',
         'is_active',
@@ -28,6 +29,7 @@ class ProductItem extends Model
     protected $casts = [
         'unit_cost' => 'decimal:2',
         'unit_price' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 
