@@ -4,7 +4,7 @@
             <x-filament::section>
                 <x-slot name="heading">Quick Actions</x-slot>
 
-                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <x-filament::input.wrapper label="Search Products">
                         <x-filament::input
                             type="search"
@@ -24,15 +24,7 @@
                         />
                     </x-filament::input.wrapper>
 
-                    <x-filament::input.wrapper label="Hold Label">
-                        <x-filament::input
-                            type="text"
-                            wire:model.defer="holdName"
-                            placeholder="Optional hold reference"
-                        />
-                    </x-filament::input.wrapper>
-
-                    <div class="flex items-end gap-2">
+                    <div class="flex items-end">
                         <x-filament::button
                             color="gray"
                             icon="heroicon-o-clock"
@@ -42,36 +34,78 @@
                         >
                             Hold Order
                         </x-filament::button>
-
-                        <x-filament::dropdown>
-                            <x-slot name="trigger">
-                                <x-filament::button color="gray" icon="heroicon-o-arrow-path" type="button">
-                                    Resume Order
-                                </x-filament::button>
-                            </x-slot>
-
-                            <x-filament::dropdown.list>
-                                @forelse ($this->heldOrders as $heldOrder)
-                                    <x-filament::dropdown.list.item
-                                        wire:click="resumeOrder({{ $heldOrder->id }})"
-                                        tag="button"
-                                    >
-                                        <span class="flex flex-col text-start">
-                                            <span class="font-semibold text-sm">{{ $heldOrder->label }}</span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">
-                                                Updated {{ $heldOrder->updated_at->diffForHumans() }}
-                                            </span>
-                                        </span>
-                                    </x-filament::dropdown.list.item>
-                                @empty
-                                    <x-filament::dropdown.list.item disabled>
-                                        No held orders
-                                    </x-filament::dropdown.list.item>
-                                @endforelse
-                            </x-filament::dropdown.list>
-                        </x-filament::dropdown>
                     </div>
                 </div>
+            </x-filament::section>
+
+            <x-filament::section>
+                <x-slot name="heading">Held Orders</x-slot>
+
+                @if ($this->heldOrders->isEmpty())
+                    <x-filament::empty-state icon="heroicon-o-clock">
+                        <x-slot name="heading">No held orders</x-slot>
+                        <x-slot name="description">
+                            Hold an order to see it listed here for quick resuming.
+                        </x-slot>
+                    </x-filament::empty-state>
+                @else
+                    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-white/10">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10 text-sm">
+                            <thead class="bg-gray-50 dark:bg-white/5">
+                                <tr class="text-left">
+                                    <th class="px-4 py-3 font-medium">Label</th>
+                                    <th class="px-4 py-3 font-medium">Customer</th>
+                                    <th class="px-4 py-3 font-medium">Cart Preview</th>
+                                    <th class="px-4 py-3 font-medium">Updated</th>
+                                    <th class="px-4 py-3 text-right font-medium">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+                                @foreach ($this->heldOrders as $heldOrder)
+                                    @php
+                                        $items = collect(data_get($heldOrder->cart, 'items', []));
+                                        $previewItems = $items->take(3)->map(function ($item) {
+                                            $quantity = (int) ($item['quantity'] ?? 1);
+                                            $quantity = $quantity > 0 ? $quantity : 1;
+                                            $name = $item['name'] ?? 'Item';
+                                            return $quantity . ' x ' . $name;
+                                        })->implode(', ');
+                                        $remainingCount = max($items->count() - 3, 0);
+                                        $preview = $previewItems !== '' ? $previewItems : 'No items';
+                                        if ($remainingCount > 0) {
+                                            $preview .= ' +' . $remainingCount . ' more';
+                                        }
+                                    @endphp
+                                    <tr wire:key="held-order-{{ $heldOrder->id }}">
+                                        <td class="px-4 py-3 align-top">
+                                            <div class="font-medium">{{ $heldOrder->label ?? 'Untitled order' }}</div>
+                                        </td>
+                                        <td class="px-4 py-3 align-top">
+                                            {{ $heldOrder->customer?->name ?? 'Walk-in customer' }}
+                                        </td>
+                                        <td class="px-4 py-3 align-top text-sm text-gray-600 dark:text-gray-300">
+                                            {{ $preview }}
+                                        </td>
+                                        <td class="px-4 py-3 align-top text-sm text-gray-600 dark:text-gray-300">
+                                            {{ $heldOrder->updated_at->diffForHumans() }}
+                                        </td>
+                                        <td class="px-4 py-3 align-top text-right">
+                                            <x-filament::button
+                                                size="sm"
+                                                color="primary"
+                                                icon="heroicon-o-arrow-path"
+                                                wire:click="resumeOrder({{ $heldOrder->id }})"
+                                                wire:loading.attr="disabled"
+                                            >
+                                                Resume
+                                            </x-filament::button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </x-filament::section>
 
             <x-filament::section>

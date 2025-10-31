@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class SaleInvoiceController extends Controller
 {
-    public function __invoke(Sale $sale): BinaryFileResponse
+    public function __invoke(Sale $sale): Response
     {
         $sale->loadMissing(['items.product', 'customer', 'paymentMethod']);
 

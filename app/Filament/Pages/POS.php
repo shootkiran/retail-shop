@@ -527,9 +527,10 @@ class POS extends Page
     public function getHeldOrdersProperty(): Collection
     {
         return HeldOrder::query()
+            ->with('customer:id,name')
             ->latest()
             ->limit(10)
-            ->get(['id', 'label', 'updated_at']);
+            ->get(['id', 'label', 'customer_id', 'cart', 'updated_at']);
     }
 
     public function getRecentSalesProperty(): Collection

@@ -9,6 +9,7 @@ use App\Models\ProductItem;
 use App\Models\User;
 use App\Models\Vendor;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -36,7 +37,10 @@ class DatabaseSeeder extends Seeder
             'Household Supplies' => 'Daily essentials and cleaning materials for home care.',
         ])->map(fn (string $description, string $name) => ProductCategory::firstOrCreate(
             ['name' => $name],
-            ['description' => $description],
+            [
+                'slug' => Str::slug($name),
+                'description' => $description,
+            ],
         ));
 
         $vendors = collect([
