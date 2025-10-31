@@ -20,15 +20,28 @@ WORKDIR /var/www/html
 
 RUN mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache
 
-RUN chown -R unit:unit /var/www/html/storage bootstrap/cache && chmod -R 775 /var/www/html/storage
+RUN chown -R unit:unit /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 COPY . .
 
-RUN chown -R unit:unit storage bootstrap/cache && chmod -R 775 storage bootstrap/cache
+RUN chown -R unit:unit storage bootstrap/cache database \
+    && chmod -R 775 storage bootstrap/cache \
+    && chmod 775 database
+
+RUN cp .env.example .env
 
 RUN composer install --prefer-dist --optimize-autoloader --no-interaction
 
+RUN composer upgrade --prefer-dist --optimize-autoloader --no-interaction
+
 RUN npm install && npm run build
+
+RUN php artisan key:generate --force
+
+RUN touch database/database.sqlite \
+    && chown unit:unit database/database.sqlite \
+    && chmod 664 database/database.sqlite
 
 RUN php artisan migrate --seed
 
