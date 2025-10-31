@@ -408,36 +408,34 @@
                     </div>
 
                     <div class="space-y-2.5">
-                        <x-filament::button
-                            color="success"
-                            icon="heroicon-o-credit-card"
-                            full
+                        <button
+                            type="button"
                             wire:click="checkout"
                             wire:loading.attr="disabled"
+                            class="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 font-semibold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60"
                         >
-                            Checkout &amp; Print Invoice
-                        </x-filament::button>
+                            <x-heroicon-o-credit-card class="h-3.5 w-3.5" />
+                            <span>Checkout &amp; Print Invoice</span>
+                        </button>
 
-                        <x-filament::button
-                            color="gray"
-                            icon="heroicon-o-trash"
-                            full
+                        <button
+                            type="button"
                             wire:click="clearCart"
+                            class="flex w-full items-center justify-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-3 py-2 font-semibold text-red-600 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
                         >
-                            Clear Cart
-                        </x-filament::button>
+                            <x-heroicon-o-trash class="h-3.5 w-3.5" />
+                            <span>Clear Cart</span>
+                        </button>
 
                         @if ($lastSaleId)
-                            <x-filament::button
-                                tag="a"
-                                :href="route('sales.invoice', $lastSaleId)"
+                            <a
+                                href="{{ route('sales.invoice', $lastSaleId) }}"
                                 target="_blank"
-                                color="secondary"
-                                icon="heroicon-o-document-text"
-                                full
+                                class="flex w-full items-center justify-center gap-1.5 rounded-md border border-secondary-500 bg-secondary-600 px-3 py-2 font-semibold text-white transition hover:bg-secondary-500 focus:outline-none focus:ring-2 focus:ring-secondary-400"
                             >
-                                Download Last Invoice
-                            </x-filament::button>
+                                <x-heroicon-o-document-text class="h-3.5 w-3.5" />
+                                <span>Download Last Invoice</span>
+                            </a>
                         @endif
                     </div>
                 </div>
