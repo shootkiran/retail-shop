@@ -101,15 +101,15 @@
                     </x-filament::input.wrapper>
 
                     <div class="flex items-end">
-                        <x-filament::button
-                            color="gray"
-                            icon="heroicon-o-clock"
+                        <button
+                            type="button"
                             wire:click="holdOrder"
                             wire:loading.attr="disabled"
-                            class="w-full"
+                            class="flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-100 px-3 py-2 font-semibold text-gray-700 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                         >
-                            Hold Order
-                        </x-filament::button>
+                            <x-heroicon-o-clock class="h-3.5 w-3.5" />
+                            <span>Hold Order</span>
+                        </button>
                     </div>
                 </div>
             </x-filament::section>
@@ -159,15 +159,15 @@
                                             {{ $heldOrder->updated_at->diffForHumans() }}
                                         </td>
                                         <td class="px-4 py-3 align-top text-right">
-                                            <x-filament::button
-                                                size="sm"
-                                                color="primary"
-                                                icon="heroicon-o-arrow-path"
+                                            <button
+                                                type="button"
                                                 wire:click="resumeOrder({{ $heldOrder->id }})"
                                                 wire:loading.attr="disabled"
+                                                class="inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1.5 font-semibold text-white transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
                                             >
-                                                Resume
-                                            </x-filament::button>
+                                                <x-heroicon-o-arrow-path class="h-3 w-3" />
+                                                <span>Resume</span>
+                                            </button>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -181,24 +181,30 @@
                 <x-slot name="heading">Categories</x-slot>
 
                 <div class="flex flex-wrap gap-2">
-                    <x-filament::button
-                        size="sm"
-                        color="{{ $activeCategory ? 'gray' : 'primary' }}"
-                        wire:click="selectCategory(null)"
+                    <button
                         type="button"
+                        wire:click="selectCategory(null)"
+                        class="@class([
+                            'inline-flex items-center rounded-md border px-3 py-1 font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500',
+                            'border-primary-600 bg-primary-600 text-white hover:bg-primary-500' => ! $activeCategory,
+                            'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700' => $activeCategory,
+                        ])"
                     >
                         All Products
-                    </x-filament::button>
+                    </button>
 
                     @foreach ($this->categories as $category)
-                        <x-filament::button
-                            size="xs"
-                            color="{{ $activeCategory === $category->id ? 'primary' : 'gray' }}"
-                            wire:click="selectCategory({{ $category->id }})"
+                        <button
                             type="button"
+                            wire:click="selectCategory({{ $category->id }})"
+                            class="@class([
+                                'inline-flex items-center rounded-md border px-3 py-1 font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500',
+                                'border-primary-600 bg-primary-600 text-white hover:bg-primary-500' => $activeCategory === $category->id,
+                                'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700' => $activeCategory !== $category->id,
+                            ])"
                         >
                             {{ $category->name }}
-                        </x-filament::button>
+                        </button>
                     @endforeach
                 </div>
             </x-filament::section>
@@ -224,16 +230,15 @@
                             <x-filament::badge color="success">₦{{ number_format($product->unit_price, 2) }}</x-filament::badge>
                         </div>
 
-                        <x-filament::button
-                            class="mt-4"
-                            color="primary"
-                            icon="heroicon-o-plus"
-                            full
+                        <button
+                            type="button"
                             wire:click="addProduct({{ $product->id }})"
                             wire:loading.attr="disabled"
+                            class="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md bg-primary-600 px-3 py-2 font-semibold text-white transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
                         >
-                            Add to Cart
-                        </x-filament::button>
+                            <x-heroicon-o-plus class="h-3.5 w-3.5" />
+                            <span>Add to Cart</span>
+                        </button>
                     </x-filament::section>
                 @empty
                     <x-filament::empty-state class="sm:col-span-2 2xl:col-span-3" icon="heroicon-o-magnifying-glass">
@@ -361,16 +366,6 @@
                             />
                         </x-filament::input.wrapper>
 
-                        <x-filament::input.wrapper label="Tax Rate">
-                            <x-filament::input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                wire:model.live="taxRate"
-                                suffix="%"
-                            />
-                        </x-filament::input.wrapper>
-
                         <x-filament::input.wrapper label="Amount Paid">
                             <x-filament::input
                                 type="number"
@@ -381,14 +376,18 @@
                             />
                         </x-filament::input.wrapper>
 
-                        <div class="rounded-lg bg-gray-50 p-4 text-sm dark:bg-white/5">
+                        <div class="rounded-lg bg-gray-50 p-4 text-sm dark:bg-white/5 sm:col-span-2">
                             <div class="flex justify-between">
                                 <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
                                 <span class="font-semibold">₦{{ number_format($this->subtotal, 2) }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-gray-500 dark:text-gray-400">Discounts</span>
+                                <span class="text-gray-500 dark:text-gray-400">Total Discounts</span>
                                 <span class="font-semibold">₦{{ number_format($this->lineDiscount + $orderDiscount, 2) }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500 dark:text-gray-400">Subtotal After Discount</span>
+                                <span class="font-semibold">₦{{ number_format($this->subtotalAfterDiscount, 2) }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-500 dark:text-gray-400">Tax</span>
