@@ -2,3 +2,91 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .fi-body {
+        font-size: 0.9375rem;
+        line-height: 1.4;
+    }
+
+    .fi-layout .fi-sidebar {
+        width: 14rem !important;
+    }
+
+    .fi-sidebar .fi-sidebar-item a,
+    .fi-sidebar .fi-sidebar-item button,
+    .fi-sidebar .fi-sidebar-group > header button {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+        font-size: 0.875rem !important;
+    }
+
+    .fi-sidebar .fi-sidebar-group > header button {
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+
+    .fi-sidebar .fi-sidebar-group > header svg {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .fi-sidebar .fi-sidebar-item .fi-icon {
+        width: 1.1rem;
+        height: 1.1rem;
+    }
+
+    .fi-topbar nav .fi-topbar-item button,
+    .fi-topbar nav .fi-topbar-item a {
+        font-size: 0.875rem;
+    }
+
+    .fi-section-header,
+    .fi-section-content {
+        padding-top: 0.75rem !important;
+        padding-bottom: 0.75rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    .fi-section-heading {
+        font-size: 0.95rem !important;
+    }
+
+    .fi-section {
+        border-radius: 0.75rem !important;
+    }
+
+    .fi-btn,
+    .fi-icon-btn,
+    .fi-dropdown-trigger {
+        border-radius: 0.625rem !important;
+        font-size: 0.875rem !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .fi-input,
+    .fi-select {
+        font-size: 0.875rem !important;
+        padding-top: 0.45rem !important;
+        padding-bottom: 0.45rem !important;
+        min-height: 2.25rem !important;
+    }
+
+    .fi-input::placeholder {
+        font-size: 0.8125rem;
+    }
+
+    .fi-section-content table th,
+    .fi-section-content table td {
+        padding-top: 0.65rem !important;
+        padding-bottom: 0.65rem !important;
+    }
+}

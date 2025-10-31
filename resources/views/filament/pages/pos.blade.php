@@ -1,10 +1,10 @@
 <x-filament-panels::page>
-    <div class="grid gap-6 xl:grid-cols-3">
-        <div class="space-y-6 xl:col-span-2">
+    <div class="grid gap-4 xl:grid-cols-3">
+        <div class="space-y-4 xl:col-span-2">
             <x-filament::section>
                 <x-slot name="heading">Quick Actions</x-slot>
 
-                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <x-filament::input.wrapper label="Search Products">
                         <x-filament::input
                             type="search"
@@ -32,7 +32,7 @@
                         />
                     </x-filament::input.wrapper>
 
-                    <div class="flex items-end gap-3">
+                    <div class="flex items-end gap-2">
                         <x-filament::button
                             color="gray"
                             icon="heroicon-o-clock"
@@ -77,7 +77,7 @@
             <x-filament::section>
                 <x-slot name="heading">Categories</x-slot>
 
-                <div class="flex flex-wrap gap-3">
+                <div class="flex flex-wrap gap-2">
                     <x-filament::button
                         size="sm"
                         color="{{ $activeCategory ? 'gray' : 'primary' }}"
@@ -100,7 +100,7 @@
                 </div>
             </x-filament::section>
 
-            <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+            <div class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
                 @forelse ($this->products as $product)
                     <x-filament::section wire:key="product-{{ $product->id }}">
                         <div class="flex items-start justify-between gap-4">
@@ -143,7 +143,7 @@
             </div>
         </div>
 
-        <div class="space-y-6">
+        <div class="space-y-4">
             <x-filament::section>
                 <x-slot name="heading">Customer &amp; Payment</x-slot>
 
@@ -187,7 +187,7 @@
             <x-filament::section>
                 <x-slot name="heading">Cart</x-slot>
 
-                <div class="space-y-4">
+                <div class="space-y-3">
                     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-white/10">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-white/10 text-sm">
                             <thead class="bg-gray-50 dark:bg-white/5">
@@ -247,7 +247,7 @@
                         </table>
                     </div>
 
-                    <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="grid gap-3 sm:grid-cols-2">
                         <x-filament::input.wrapper label="Order Discount">
                             <x-filament::input
                                 type="number"
@@ -302,7 +302,7 @@
                         </div>
                     </div>
 
-                    <div class="space-y-3">
+                    <div class="space-y-2.5">
                         <x-filament::button
                             color="success"
                             icon="heroicon-o-credit-card"
@@ -341,7 +341,7 @@
             <x-filament::section>
                 <x-slot name="heading">Recent Sales</x-slot>
 
-                <div class="space-y-3">
+                <div class="space-y-2.5">
                     @forelse ($this->recentSales as $sale)
                         <div class="flex items-center justify-between text-sm">
                             <div>
