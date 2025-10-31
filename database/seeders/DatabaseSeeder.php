@@ -174,9 +174,65 @@ class DatabaseSeeder extends Seeder
         $categoryPool = $categories->values();
         $vendorPool = $vendors->values();
 
+        $productAdjectives = [
+            'Fresh',
+            'Organic',
+            'Premium',
+            'Classic',
+            'Gourmet',
+            'Deluxe',
+            'Savory',
+            'Zesty',
+            'Hearty',
+            'Seasoned',
+            'Creamy',
+            'Crunchy',
+            'Artisan',
+            'Gluten-Free',
+            'Vegan',
+            'Spiced',
+            'Smoked',
+            'Herbed',
+            'Roasted',
+            'Honeyed',
+        ];
+
+        $productNouns = [
+            'Coffee Beans',
+            'Breakfast Cereal',
+            'Granola Bars',
+            'Sparkling Water',
+            'Olive Oil',
+            'Tomato Sauce',
+            'Pasta Shells',
+            'Trail Mix',
+            'Fruit Gummies',
+            'Protein Shake',
+            'Energy Drink',
+            'Hand Soap',
+            'Laundry Pods',
+            'Dish Detergent',
+            'Paper Towels',
+            'Surface Cleaner',
+            'Fabric Softener',
+            'All-Purpose Wipes',
+            'Herbal Tea',
+            'Snack Crackers',
+        ];
+
         foreach (range(1, 1000) as $index) {
-            $sku = sprintf('TEST-%04d', $index);
-            $barcode = sprintf('900000%06d', $index);
+            $name = sprintf(
+                '%s %s %s',
+                $faker->randomElement($productAdjectives),
+                $faker->randomElement(['', 'Family', 'Daily', 'Signature', 'Select']),
+                $faker->randomElement($productNouns)
+            );
+
+            $name = trim(preg_replace('/\s+/', ' ', $name));
+            $skuSlug = Str::upper(Str::slug($name));
+            $skuBase = preg_replace('/[^A-Z0-9]/', '', $skuSlug);
+            $sku = sprintf('%s%04d', Str::substr($skuBase, 0, 8) ?: 'ITEM', $index);
+            $barcode = sprintf('900%09d', $index);
             $unitCost = $faker->randomFloat(2, 0.5, 80);
             $unitPrice = $unitCost + $faker->randomFloat(2, 0.2, 20);
 
@@ -185,7 +241,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'product_category_id' => $categoryPool->random()->id,
                     'vendor_id' => $vendorPool->random()->id,
-                    'name' => "Test Product {$index}",
+                    'name' => $name,
                     'barcode' => $barcode,
                     'description' => $faker->sentence(),
                     'unit_cost' => $unitCost,

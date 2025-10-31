@@ -134,7 +134,11 @@ class POS extends Page
 
         $heldOrder->delete();
 
-        $this->dispatch('pos:held-order-deleted', heldOrderId: $heldOrderId);
+        $this->dispatch(
+            'pos:held-order-deleted',
+            heldOrderId: $heldOrderId,
+            heldOrders: $this->heldOrdersPayload(),
+        );
     }
 
     public function getFrontendStateProperty(): array

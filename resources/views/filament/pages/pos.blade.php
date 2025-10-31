@@ -60,6 +60,7 @@
 <x-filament-panels::page>
     <div
         class="pos-compact"
+        wire:ignore
         x-data="posApp(@js($this->frontendState))"
         x-init="init()"
     >
@@ -96,7 +97,7 @@
                             <button
                                 type="button"
                                 @click="holdCurrentOrder"
-                                :disabled="isProcessing || cart.length === 0"
+                                :disabled="isProcessing || cart.length === 0 || !canCheckout"
                                 class="flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-100 px-3 py-2 font-semibold text-gray-700 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                             >
                                 <x-heroicon-o-clock class="h-3.5 w-3.5" />
@@ -188,27 +189,23 @@
                     </div>
                 </section>
 
-                <div class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <template x-if="filteredProducts.length === 0">
-                        <div class="sm:col-span-2 2xl:col-span-3 rounded-xl border border-dashed border-gray-200 p-6 text-center text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
+                        <div class="sm:col-span-2 lg:col-span-4 rounded-xl border border-dashed border-gray-200 p-6 text-center text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
                             No products match your filters.
                         </div>
                     </template>
 
                     <template x-for="product in filteredProducts" :key="product.id">
-                        <section class="space-y-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition hover:border-primary-200 dark:border-white/10 dark:bg-gray-900">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="space-y-1">
-                                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="product.name"></h3>
-                                    <p class="text-[0.6rem] text-gray-500 dark:text-gray-400">
-                                        <span x-text="'SKU: ' + (product.sku ?? 'N/A')"></span>
-                                        <template x-if="product.barcode">
-                                            <span class="ml-1" x-text="'• Barcode: ' + product.barcode"></span>
-                                        </template>
-                                    </p>
-                                    <p class="text-[0.6rem] text-gray-500 dark:text-gray-400" x-text="'In stock: ' + product.stock_quantity"></p>
-                                </div>
-                                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" x-text="formatMoney(product.unit_price)"></span>
+                        <section class="relative space-y-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition hover:border-primary-200 dark:border-white/10 dark:bg-gray-900">
+                            <div class="space-y-1 pr-1">
+                            <span class=" rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" x-text="formatMoney(product.unit_price)"></span>
+                                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="product.name"></h3>
+                                <p class="text-[0.6rem] text-gray-500 dark:text-gray-400" x-text="'SKU: ' + (product.sku ?? 'N/A')"></p>
+                                <template x-if="product.barcode">
+                                    <p class="text-[0.6rem] text-gray-500 dark:text-gray-400" x-text="'Barcode: ' + product.barcode"></p>
+                                </template>
+                                <p class="text-[0.6rem] text-gray-500 dark:text-gray-400" x-text="'In stock: ' + product.stock_quantity"></p>
                             </div>
 
                             <button
@@ -350,14 +347,14 @@
                             </label>
 
                             <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
-                                <span>Amount Paid</span>
+                                <span>Amount Tendered</span>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2 text-[0.6rem] text-gray-500 dark:text-gray-400">₦</span>
                                     <input
                                         type="number"
                                         min="0"
                                         step="0.01"
-                                        x-model.number="amountPaid"
+                                        x-model.number="amountTendered"
                                         class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-5 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
                                     >
                                 </div>
@@ -385,8 +382,12 @@
                                     <span x-text="formatMoney(grandTotal)"></span>
                                 </div>
                                 <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                                    <span>Balance</span>
+                                    <span>Balance Due</span>
                                     <span class="font-semibold text-gray-900 dark:text-gray-100" x-text="formatMoney(amountDue)"></span>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                                    <span>Change</span>
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100" x-text="formatMoney(changeDue)"></span>
                                 </div>
                             </div>
                         </div>
@@ -394,8 +395,18 @@
                         <div class="space-y-2.5">
                             <button
                                 type="button"
-                                @click="checkout"
-                                :disabled="isProcessing || cart.length === 0"
+                                @click="checkout(false)"
+                                :disabled="isProcessing || cart.length === 0 || !canCheckout"
+                                class="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary-600 px-3 py-2 text-[0.75rem] font-semibold text-white transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-primary-500 dark:hover:bg-primary-400"
+                            >
+                                <x-heroicon-o-check-circle class="h-3.5 w-3.5" />
+                                <span x-text="isProcessing ? 'Processing…' : 'Checkout'"></span>
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="checkout(true)"
+                                :disabled="isProcessing || cart.length === 0 || !canCheckout"
                                 class="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[0.75rem] font-semibold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <x-heroicon-o-credit-card class="h-3.5 w-3.5" />
@@ -477,10 +488,12 @@
                 paymentType: initial.defaults?.payment_type ?? 'paid',
                 orderDiscount: Number(initial.defaults?.order_discount ?? 0),
                 amountPaid: Number(initial.defaults?.amount_paid ?? 0),
+                amountTendered: Number(initial.defaults?.amount_paid ?? 0),
                 lastSaleId: initial.defaults?.last_sale_id ?? null,
                 invoiceTemplate: initial.defaults?.invoice_url_template ?? '',
                 isProcessing: false,
                 holdName: '',
+                shouldPrintInvoice: true,
                 init() {
                     this.cart = [];
                     this._shortcutHandler = (event) => {
@@ -493,7 +506,7 @@
 
                     Livewire.on('pos:checkout-completed', (payload) => this.handleCheckoutCompleted(payload ?? {}));
                     Livewire.on('pos:hold-completed', (payload) => this.handleHoldCompleted(payload ?? {}));
-                    Livewire.on('pos:held-order-deleted', ({ heldOrderId } = {}) => this.handleHeldOrderDeleted(heldOrderId));
+                    Livewire.on('pos:held-order-deleted', (payload) => this.handleHeldOrderDeleted(payload ?? {}));
                     Livewire.on('pos:held-order-resumed', (payload) => this.handleHeldOrderResumed(payload ?? {}));
                 },
                 destroy() {
@@ -554,8 +567,25 @@
                 get grandTotal() {
                     return Math.max(this.subtotalAfterDiscount + this.taxAmount, 0);
                 },
+                get effectiveAmountPaid() {
+                    return Math.max(Number(this.amountTendered ?? 0), Number(this.amountPaid ?? 0));
+                },
                 get amountDue() {
-                    return Math.max(this.grandTotal - this.amountPaid, 0);
+                    return Math.max(this.grandTotal - this.effectiveAmountPaid, 0);
+                },
+                get changeDue() {
+                    return Math.max(this.effectiveAmountPaid - this.grandTotal, 0);
+                },
+                get canCheckout() {
+                    if (this.cart.length === 0) {
+                        return false;
+                    }
+
+                    if (!this.customerId) {
+                        return this.effectiveAmountPaid >= this.grandTotal;
+                    }
+
+                    return true;
                 },
                 formatMoney(value) {
                     return '₦' + new Intl.NumberFormat('en-NG', {
@@ -607,6 +637,7 @@
                     this.cart = [];
                     this.orderDiscount = 0;
                     this.amountPaid = 0;
+                    this.amountTendered = 0;
                     this.paymentType = 'paid';
                     this.customerId = null;
                     this.paymentMethodId = this.defaultPaymentMethodId;
@@ -628,11 +659,12 @@
 
                     this.scanner.input = '';
                 },
-                checkout() {
-                    if (this.cart.length === 0 || this.isProcessing) {
+                checkout(shouldPrintInvoice = true) {
+                    if (this.isProcessing || !this.canCheckout) {
                         return;
                     }
 
+                    this.shouldPrintInvoice = shouldPrintInvoice;
                     this.isProcessing = true;
                     Livewire.dispatch('pos:checkout', { payload: this.buildPayload() });
                 },
@@ -650,10 +682,19 @@
                     }
 
                     this.isProcessing = true;
-                    Livewire.dispatch('pos:resume-held-order', { heldOrderId });
+                    Livewire.dispatch('pos:resume-held-order', {
+                        payload: { heldOrderId }
+                    });
                 },
                 deleteHeldOrder(heldOrderId) {
-                    Livewire.dispatch('pos:delete-held-order', { heldOrderId });
+                    if (this.isProcessing) {
+                        return;
+                    }
+
+                    this.isProcessing = true;
+                    Livewire.dispatch('pos:delete-held-order', {
+                        payload: { heldOrderId }
+                    });
                 },
                 handleCheckoutCompleted({ sale, recentSales, lastSaleId, products } = {}) {
                     this.isProcessing = false;
@@ -667,7 +708,10 @@
                     this.clearCart();
                     this.lastSaleId = lastSaleId ?? sale.id ?? null;
 
-                    if (sale.invoice_url) {
+                    const shouldPrint = this.shouldPrintInvoice;
+                    this.shouldPrintInvoice = true;
+
+                    if (sale.invoice_url && shouldPrint) {
                         window.open(sale.invoice_url, '_blank');
                     }
                 },
@@ -682,10 +726,18 @@
                         this.clearCart();
                     }
                 },
-                handleHeldOrderDeleted(heldOrderId) {
+                handleHeldOrderDeleted({ heldOrderId = null, heldOrders = null } = {}) {
+                    this.isProcessing = false;
+
+                    if (Array.isArray(heldOrders)) {
+                        this.heldOrders = heldOrders;
+                        return;
+                    }
+
                     if (!heldOrderId) {
                         return;
                     }
+
                     this.heldOrders = this.heldOrders.filter((order) => order.id !== heldOrderId);
                 },
                 handleHeldOrderResumed({ cart, defaults, heldOrders } = {}) {
@@ -701,6 +753,7 @@
                         this.paymentType = defaults.payment_type ?? 'paid';
                         this.orderDiscount = Number(defaults.order_discount ?? 0);
                         this.amountPaid = Number(defaults.amount_paid ?? 0);
+                        this.amountTendered = this.amountPaid;
                         this.lastSaleId = defaults.last_sale_id ?? null;
                     }
 
@@ -711,12 +764,15 @@
                     this.clampOrderDiscount();
                 },
                 buildPayload() {
+                    const paid = this.effectiveAmountPaid;
+                    this.amountPaid = paid;
+
                     return {
                         customer_id: this.customerId,
                         payment_method_id: this.paymentMethodId,
                         payment_type: this.paymentType,
                         order_discount: this.orderDiscount,
-                        amount_paid: this.amountPaid,
+                        amount_paid: paid,
                         hold_name: this.holdName,
                         cart: this.cart.map((item) => ({
                             product_id: item.product_id,

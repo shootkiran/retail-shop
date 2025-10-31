@@ -80,10 +80,12 @@
                 <td>Amount Paid</td>
                 <td class="text-right">रू{{ number_format($sale->amount_paid, 2) }}</td>
             </tr>
-            <tr>
-                <td>Balance Due</td>
-                <td class="text-right">रू{{ number_format($sale->amount_due, 2) }}</td>
-            </tr>
+            @if ($sale->amount_due > 0)
+                <tr>
+                    <td>Balance Due</td>
+                    <td class="text-right">रू{{ number_format($sale->amount_due, 2) }}</td>
+                </tr>
+            @endif
         </table>
     </div>
 
