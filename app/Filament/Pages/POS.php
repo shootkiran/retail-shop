@@ -34,6 +34,8 @@ class POS extends Page
 
     public ?int $customerId = null;
 
+    public ?string $customerName = null;
+
     public ?int $paymentMethodId = null;
 
     public string $paymentType = 'paid';
@@ -59,6 +61,7 @@ class POS extends Page
     public function mount(): void
     {
         $this->cart = [];
+        $this->customerName = null;
         $this->paymentMethodId = $this->resolveDefaultPaymentMethodId();
     }
 
@@ -141,6 +144,42 @@ class POS extends Page
         );
     }
 
+    #[On('pos:search-customers')]
+    public function searchCustomersFromClient(array $payload = []): void
+    {
+        $payload = $this->normalizeEventPayload($payload);
+        $term = trim((string) ($payload['term'] ?? ''));
+
+        if (strlen($term) < 2) {
+            $this->dispatch('pos:customers-found', customers: []);
+
+            return;
+        }
+
+        $limit = (int) ($payload['limit'] ?? 10);
+        $limit = max(1, min($limit, 15));
+
+        $customers = Customer::query()
+            ->select(['id', 'name', 'email', 'phone'])
+            ->where(function ($query) use ($term): void {
+                $query->where('name', 'like', '%' . $term . '%')
+                    ->orWhere('email', 'like', '%' . $term . '%')
+                    ->orWhere('phone', 'like', '%' . $term . '%');
+            })
+            ->orderBy('name')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Customer $customer) => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+            ])
+            ->all();
+
+        $this->dispatch('pos:customers-found', customers: $customers);
+    }
+
     public function getFrontendStateProperty(): array
     {
         return [
@@ -164,10 +203,23 @@ class POS extends Page
         $payload = $this->normalizeEventPayload($payload);
 
         $this->customerId = $this->nullableInt($payload['customer_id'] ?? null);
-        $this->paymentMethodId = $this->nullableInt($payload['payment_method_id'] ?? $this->resolveDefaultPaymentMethodId());
-        $this->paymentType = in_array($payload['payment_type'] ?? null, ['paid', 'credit'], true)
-            ? $payload['payment_type']
+        $this->customerName = isset($payload['customer_name'])
+            ? (trim((string) $payload['customer_name']) ?: null)
+            : $this->resolveCustomerName($this->customerId);
+
+        $rawPaymentType = $payload['payment_type'] ?? null;
+        $this->paymentType = in_array($rawPaymentType, ['paid', 'credit'], true)
+            ? $rawPaymentType
             : 'paid';
+
+        $defaultPaymentMethodId = $this->resolveDefaultPaymentMethodId();
+        $paymentMethodId = array_key_exists('payment_method_id', $payload)
+            ? $this->nullableInt($payload['payment_method_id'])
+            : $defaultPaymentMethodId;
+
+        $this->paymentMethodId = $this->paymentType === 'paid'
+            ? ($paymentMethodId ?: $defaultPaymentMethodId)
+            : null;
         $this->orderDiscount = $this->sanitizeMoney($payload['order_discount'] ?? 0);
         $this->amountPaid = $this->sanitizeMoney($payload['amount_paid'] ?? 0);
         $this->holdName = trim((string) ($payload['hold_name'] ?? ''));
@@ -282,6 +334,7 @@ class POS extends Page
                 'tax_rate' => (float) $product->tax_rate,
                 'stock_quantity' => (int) $product->stock_quantity,
                 'product_category_id' => $product->product_category_id,
+                'image_url' => $product->image_url ?? null,
             ])
             ->values()
             ->all();
@@ -289,13 +342,7 @@ class POS extends Page
 
     protected function customersPayload(): array
     {
-        return $this->customers
-            ->map(fn ($customer) => [
-                'id' => $customer->id,
-                'name' => $customer->name,
-            ])
-            ->values()
-            ->all();
+        return [];
     }
 
     protected function paymentMethodsPayload(): array
@@ -389,6 +436,7 @@ class POS extends Page
         }
 
         $this->customerId = $heldOrder->customer_id;
+        $this->customerName = $heldOrder->customer?->name;
         $this->paymentMethodId = $heldOrder->payment_method_id ?: $this->resolveDefaultPaymentMethodId();
         $this->paymentType = $heldOrder->payment_type;
         $this->orderDiscount = (float) $heldOrder->order_discount;
@@ -418,6 +466,7 @@ class POS extends Page
     {
         $this->cart = [];
         $this->customerId = null;
+        $this->customerName = null;
         $this->paymentMethodId = $this->resolveDefaultPaymentMethodId();
         $this->paymentType = 'paid';
         $this->orderDiscount = 0.0;
@@ -588,6 +637,7 @@ class POS extends Page
     {
         return [
             'customer_id' => $this->customerId,
+            'customer_name' => $this->customerName ?? $this->resolveCustomerName($this->customerId),
             'payment_method_id' => $this->paymentMethodId,
             'payment_type' => $this->paymentType,
             'order_discount' => $this->orderDiscount,
@@ -616,9 +666,7 @@ class POS extends Page
 
     public function getCustomersProperty(): Collection
     {
-        return Customer::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        return collect();
     }
 
     public function getPaymentMethodsProperty(): Collection
@@ -626,6 +674,23 @@ class POS extends Page
         return PaymentMethod::query()
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    protected function resolveCustomerName(?int $customerId): ?string
+    {
+        static $customerNames = [];
+
+        if (! $customerId) {
+            return null;
+        }
+
+        if (array_key_exists($customerId, $customerNames)) {
+            return $customerNames[$customerId];
+        }
+
+        return $customerNames[$customerId] = Customer::query()
+            ->whereKey($customerId)
+            ->value('name');
     }
 
     public function getHeldOrdersProperty(): Collection
