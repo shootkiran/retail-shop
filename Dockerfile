@@ -1,14 +1,23 @@
-# Stage 1 - Build
+# ===========================================
+# Stage 1 - Build Dependencies
+# ===========================================
 FROM composer:2.7 AS builder
+
 WORKDIR /app
+
+# Copy composer files and install dependencies
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+# Copy application source
 COPY . .
 
-# Stage 2 - Production
+# ===========================================
+# Stage 2 - Production Runtime
+# ===========================================
 FROM php:8.3-fpm
 
-# Install system dependencies
+# Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
     supervisor \
     cron \
@@ -19,9 +28,12 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
-    zip \
     libzip-dev \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
+    libicu-dev \         # 👈 required for PHP intl extension
+    zip \
+ && docker-php-ext-configure gd --with-freetype --with-jpeg \
+ && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip intl \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /var/www/html
@@ -36,11 +48,11 @@ COPY supervisor/ /etc/supervisor/conf.d/
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Set permissions for storage and bootstrap
+# Ensure correct permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose Laravel Reverb port (default 8080)
+# Expose Laravel Reverb port (default)
 EXPOSE 8080
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+# Entrypoint + Supervisord
+ENTRYPOINT ["/usr/local/bin/docker-entryp]()
