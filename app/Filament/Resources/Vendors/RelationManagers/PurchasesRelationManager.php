@@ -1,56 +1,51 @@
 <?php
 
-namespace App\Filament\Resources\Sales\Tables;
+namespace App\Filament\Resources\Vendors\RelationManagers;
 
-use App\Filament\Resources\Customers\CustomerResource;
+use App\Filament\Resources\Purchases\Schemas\PurchaseForm;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
-class SalesTable
+class PurchasesRelationManager extends RelationManager
 {
-    public static function configure(Table $table): Table
+    protected static string $relationship = 'purchases';
+
+    protected static ?string $recordTitleAttribute = 'reference';
+
+    public function form(Schema $schema): Schema
+    {
+        return PurchaseForm::configure($schema);
+    }
+
+    public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('paymentMethod'))
             ->columns([
                 TextColumn::make('reference')
-                    ->label('Sale Ref.')
+                    ->label('Purchase Ref.')
                     ->searchable()
                     ->copyable()
                     ->sortable(),
-                TextColumn::make('customer.name')
-                    ->label('Customer')
-                    ->toggleable()
-                    ->sortable()
-                    ->url(fn ($record) => $record->customer
-                        ? CustomerResource::getUrl('view', ['record' => $record->customer])
-                        : null),
                 TextColumn::make('paymentMethod.name')
                     ->label('Payment Method')
                     ->toggleable(),
                 BadgeColumn::make('status')
                     ->colors([
                         'warning' => 'draft',
-                        'success' => 'completed',
+                        'info' => 'ordered',
+                        'success' => 'received',
                         'danger' => 'cancelled',
-                    ])
-                    ->icons([
-                        'heroicon-o-pencil-square' => 'draft',
-                        'heroicon-o-check-circle' => 'completed',
-                        'heroicon-o-x-mark' => 'cancelled',
-                    ]),
-                BadgeColumn::make('payment_status')
-                    ->label('Payment Status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'info' => 'partial',
-                        'success' => 'paid',
                     ]),
                 TextColumn::make('grand_total')
                     ->label('Grand Total')
@@ -64,8 +59,8 @@ class SalesTable
                     ->label('Amount Due')
                     ->money('ngn')
                     ->badge()
-                    ->color(fn ($state) => $state > 0 ? 'danger' : 'success'),
-                TextColumn::make('sold_at')
+                    ->color(fn ($state) => $state > 0 ? 'warning' : 'success'),
+                TextColumn::make('purchased_at')
                     ->dateTime()
                     ->sortable(),
             ])
@@ -73,32 +68,31 @@ class SalesTable
                 SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
-                        'completed' => 'Completed',
+                        'ordered' => 'Ordered',
+                        'received' => 'Received',
                         'cancelled' => 'Cancelled',
-                    ]),
-                SelectFilter::make('payment_status')
-                    ->label('Payment Status')
-                    ->options([
-                        'pending' => 'Pending',
-                        'partial' => 'Partial',
-                        'paid' => 'Paid',
                     ]),
                 TernaryFilter::make('amount_due')
                     ->label('Has Balance')
                     ->placeholder('All')
-                    ->trueLabel('With balance')
-                    ->falseLabel('Fully paid')
-                    ->query(fn ($query, $state) => $query->when($state === 'true', fn ($q) => $q->where('amount_due', '>', 0))
-                        ->when($state === 'false', fn ($q) => $q->where('amount_due', 0))),
+                    ->trueLabel('Outstanding')
+                    ->falseLabel('Settled')
+                    ->query(
+                        fn (Builder $query, $state): Builder => $query
+                            ->when($state === 'true', fn (Builder $innerQuery): Builder => $innerQuery->where('amount_due', '>', 0))
+                            ->when($state === 'false', fn (Builder $innerQuery): Builder => $innerQuery->where('amount_due', 0)),
+                    ),
             ])
+            ->headerActions([])
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make(),
             ])
-            ->toolbarActions([
+            ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
             ]);
     }
 }
+

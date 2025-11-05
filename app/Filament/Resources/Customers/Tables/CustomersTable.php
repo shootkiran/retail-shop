@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Customers\Tables;
 
+use App\Filament\Resources\Customers\CustomerResource;
 use App\Models\Customer;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -17,6 +19,7 @@ class CustomersTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (Customer $record): string => CustomerResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('name')
                     ->label('Customer')
@@ -47,6 +50,8 @@ class CustomersTable
                         ->toArray()),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->url(fn (Customer $record): string => CustomerResource::getUrl('view', ['record' => $record])),
                 EditAction::make(),
                 DeleteAction::make(),
             ])
