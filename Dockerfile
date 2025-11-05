@@ -8,8 +8,6 @@ WORKDIR /app
 # Copy composer files and install dependencies
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-# Copy application source
 COPY . .
 
 # ===========================================
@@ -29,7 +27,7 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
-    libicu-dev \         # 👈 required for PHP intl extension
+    libicu-dev \ 
     zip \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
  && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip intl \
