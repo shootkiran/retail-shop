@@ -1,21 +1,59 @@
 # ===========================================
-# Stage 1 - Build Dependencies
+# Stage 0 - PHP builder with required extensions
 # ===========================================
-FROM composer:2.7 AS builder
+FROM php:8.3-cli AS php-builder
+
+# System deps for PHP extensions
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libonig-dev \
+    libxml2-dev \
+    libzip-dev \
+    libicu-dev \
+    zip \
+ && docker-php-ext-configure gd --with-freetype --with-jpeg \
+ && docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip \
+    intl \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Bring in Composer binary
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Copy composer files and install dependencies
+# Copy composer files first to leverage Docker layer caching
 COPY composer.json composer.lock ./
+
+# Make sure Composer won't complain about running as root in CI
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
+# Install PHP dependencies (prod only)
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+# Now copy the rest of the application
 COPY . .
 
+# (Optional) If your app builds assets here, do it in this stage
+
+
 # ===========================================
-# Stage 2 - Production Runtime
+# Stage 1 - Production Runtime (PHP-FPM)
 # ===========================================
 FROM php:8.3-fpm
 
-# Install system dependencies and PHP extensions
+# System deps and PHP extensions (match builder to avoid surprises)
 RUN apt-get update && apt-get install -y \
     supervisor \
     cron \
@@ -27,31 +65,40 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
-    libicu-dev \ 
+    libicu-dev \
     zip \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
- && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip intl \
+ && docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip \
+    intl \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy Laravel app from builder
-COPY --from=builder /app /var/www/html
+# Copy app (including vendor from builder stage)
+COPY --from=php-builder /app /var/www/html
 
-# Copy supervisor configs
+# Supervisor configs (queue/reverb/etc.)
 COPY supervisor/ /etc/supervisor/conf.d/
 
-# Copy entrypoint script
+# Entrypoint
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Ensure correct permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Permissions for Laravel
+RUN chown -R www-data:www-data \
+      /var/www/html/storage \
+      /var/www/html/bootstrap/cache
 
-# Expose Laravel Reverb port (default)
+# Reverb default port
 EXPOSE 8080
 
-# Entrypoint + Supervisord
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
