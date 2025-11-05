@@ -28,6 +28,8 @@ RUN apt-get update && apt-get install -y \
     intl \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Now copy the rest of the application
+COPY . .
 # Bring in Composer binary
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
@@ -42,8 +44,6 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 # Install PHP dependencies (prod only)
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
-# Now copy the rest of the application
-COPY . .
 
 # (Optional) If your app builds assets here, do it in this stage
 
