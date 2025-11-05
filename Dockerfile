@@ -30,8 +30,6 @@ RUN apt-get update && apt-get install -y \
 
 
 WORKDIR /app
-
-
 # Now copy the rest of the application
 COPY . .
 
@@ -77,7 +75,13 @@ WORKDIR /var/www/html
 # Copy app (including vendor from builder stage)
 COPY --from=php-builder /app /var/www/html
 
-# Supervisor configs (queue/reverb/etc.)
+# Install nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+
+# Copy nginx config
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Supervisor will manage php-fpm, nginx, queue, reverb, and scheduler
 COPY supervisor/ /etc/supervisor/conf.d/
 
 # Entrypoint
