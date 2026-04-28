@@ -55,6 +55,12 @@
             min-height: auto !important;
         }
 
+        .pos-compact .pos-money-input {
+            padding-left: 2.25rem !important;
+            padding-right: 0.75rem !important;
+            min-height: 2.15rem !important;
+        }
+
         [x-cloak] {
             display: none !important;
         }
@@ -80,6 +86,7 @@
                             <input
                                 type="search"
                                 x-model.debounce.300ms="filters.search"
+                                @input="resetProductPagination()"
                                 placeholder="Search by name, SKU or barcode"
                                 autocomplete="off"
                                 class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-normal shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-950 dark:text-white"
@@ -102,7 +109,7 @@
                             <button
                                 type="button"
                                 @click="holdCurrentOrder"
-                                :disabled="isProcessing || cart.length === 0 || !canCheckout"
+                                :disabled="!canHoldOrder"
                                 class="flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-100 px-3 py-2 font-semibold text-gray-700 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                             >
                                 <x-heroicon-o-clock class="h-3.5 w-3.5" />
@@ -175,7 +182,7 @@
                     <div class="flex flex-wrap gap-2">
                         <button
                             type="button"
-                            @click="filters.activeCategory = null"
+                            @click="setProductCategory(null)"
                             :class="filters.activeCategory === null ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-500' : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700'"
                             class="inline-flex items-center rounded-md border px-3 py-1 text-[0.7rem] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
@@ -185,7 +192,7 @@
                         <template x-for="category in categories" :key="category.id">
                             <button
                                 type="button"
-                                @click="filters.activeCategory = category.id"
+                                @click="setProductCategory(category.id)"
                                 :class="filters.activeCategory === category.id ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-500' : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700'"
                                 class="inline-flex items-center rounded-md border px-3 py-1 text-[0.7rem] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 x-text="category.name"
@@ -201,7 +208,7 @@
                         </div>
                     </template>
 
-                    <template x-for="product in filteredProducts" :key="product.id">
+                    <template x-for="product in paginatedProducts" :key="product.id">
                         <section class="relative space-y-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition hover:border-primary-200 dark:border-white/10 dark:bg-gray-900">
                             <span class="absolute right-3 top-3 rounded-full bg-emerald-100 px-2 py-0.5 text-xl font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" x-text="formatMoney(product.unit_price)"></span>
                             <button
@@ -234,6 +241,66 @@
                             </button>
                         </section>
                     </template>
+                </div>
+
+                <div
+                    x-show="filteredProducts.length > 0"
+                    x-cloak
+                    class="mt-3 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 text-[0.65rem] text-gray-600 shadow-sm dark:border-white/10 dark:bg-gray-900 dark:text-gray-300 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div class="font-medium">
+                        Showing
+                        <span class="font-semibold text-gray-900 dark:text-gray-100" x-text="productPageStart"></span>
+                        -
+                        <span class="font-semibold text-gray-900 dark:text-gray-100" x-text="productPageEnd"></span>
+                        of
+                        <span class="font-semibold text-gray-900 dark:text-gray-100" x-text="filteredProducts.length"></span>
+                        products
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 sm:justify-end">
+                        <label class="flex items-center gap-1.5 font-semibold">
+                            <span>Per page</span>
+                            <select
+                                x-model.number="productPagination.perPage"
+                                @change="resetProductPagination()"
+                                class="rounded-md border border-gray-300 bg-white px-2 py-1 text-[0.65rem] font-medium focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-white/10 dark:bg-gray-950 dark:text-white"
+                            >
+                                <option value="8">8</option>
+                                <option value="12">12</option>
+                                <option value="16">16</option>
+                                <option value="24">24</option>
+                            </select>
+                        </label>
+
+                        <div class="flex items-center gap-1">
+                            <button
+                                type="button"
+                                @click="previousProductPage()"
+                                :disabled="productPagination.page <= 1"
+                                class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-gray-100 text-gray-700 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                                title="Previous page"
+                            >
+                                <x-heroicon-o-chevron-left class="h-3.5 w-3.5" />
+                            </button>
+
+                            <span class="min-w-16 text-center font-semibold text-gray-900 dark:text-gray-100">
+                                <span x-text="productPagination.page"></span>
+                                /
+                                <span x-text="productPageCount"></span>
+                            </span>
+
+                            <button
+                                type="button"
+                                @click="nextProductPage()"
+                                :disabled="productPagination.page >= productPageCount"
+                                class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-gray-100 text-gray-700 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                                title="Next page"
+                            >
+                                <x-heroicon-o-chevron-right class="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -315,12 +382,21 @@
                                     x-show="showCustomerResults"
                                     class="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-gray-900"
                                 >
+                                    <button
+                                        type="button"
+                                        @click="selectWalkInCustomer()"
+                                        class="flex w-full flex-col items-start gap-0.5 border-b border-gray-100 px-3 py-2 text-left text-[0.6rem] transition hover:bg-primary-50 focus:outline-none focus:bg-primary-100 dark:border-white/10 dark:hover:bg-primary-500/20"
+                                    >
+                                        <span class="font-semibold text-gray-800 dark:text-gray-100">Walk-in customer</span>
+                                        <span class="text-[0.55rem] text-gray-500 dark:text-gray-400">No customer account</span>
+                                    </button>
+
                                     <template x-if="isSearchingCustomers">
                                         <p class="px-3 py-2 text-[0.6rem] text-gray-500 dark:text-gray-400">Searching…</p>
                                     </template>
 
                                     <template x-if="!isSearchingCustomers && customerSearchResults.length === 0 && (customerSearchTerm ?? '').trim().length >= 2">
-                                        <p class="px-3 py-2 text-[0.6rem] text-gray-500 dark:text-gray-400">No customers found.</p>
+                                        <p class="px-3 py-2 text-[0.6rem] text-gray-500 dark:text-gray-400">No customer accounts found.</p>
                                     </template>
 
                                     <template x-for="customer in customerSearchResults" :key="customer.id">
@@ -432,7 +508,7 @@
                                             step="0.01"
                                             x-model.number="orderDiscount"
                                             @change="clampOrderDiscount(); if (Number(orderDiscount ?? 0) <= 0) { toggleOrderDiscount(false); }"
-                                            class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-9 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                                            class="pos-money-input w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-9 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
                                         >
                                     </div>
                                 </label>
@@ -447,7 +523,7 @@
                                         min="0"
                                         step="0.01"
                                         x-model.number="amountTendered"
-                                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-9 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                                        class="pos-money-input w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-9 text-xs font-medium shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-900 dark:text-white"
                                     >
                                 </div>
                                 <span class="text-[0.55rem] font-medium text-gray-500 dark:text-gray-400">Enter the amount received from the customer.</span>
@@ -526,7 +602,7 @@
                                     class="flex w-full items-center justify-center gap-1.5 rounded-md border border-slate-500 bg-slate-600 px-3 py-2 text-[0.75rem] font-semibold text-white transition hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400"
                                 >
                                     <x-heroicon-o-document-text class="h-3.5 w-3.5" />
-                                    <span>Download Last Invoice</span>
+                                    <span>Open Last Invoice</span>
                                 </a>
                             </template>
                         </div>
@@ -618,6 +694,10 @@
                 filters: {
                     search: '',
                     activeCategory: null,
+                },
+                productPagination: {
+                    page: 1,
+                    perPage: 12,
                 },
                 scanner: {
                     input: '',
@@ -733,9 +813,7 @@
                     this.showCustomerResults = true;
                 },
                 focusCustomerSearch() {
-                    if (this.customerSearchResults.length > 0) {
-                        this.showCustomerResults = true;
-                    }
+                    this.showCustomerResults = true;
                 },
                 searchCustomers() {
                     const term = (this.customerSearchTerm ?? '').trim();
@@ -743,7 +821,7 @@
                     if (term.length < 2) {
                         this.customerSearchResults = [];
                         this.isSearchingCustomers = false;
-                        this.showCustomerResults = false;
+                        this.showCustomerResults = true;
                         return;
                     }
 
@@ -781,6 +859,14 @@
                     this.customerSearchResults = [];
                     this.showCustomerResults = false;
                 },
+                selectWalkInCustomer() {
+                    this.customerId = null;
+                    this.customerName = '';
+                    this.customerSearchTerm = 'Walk-in customer';
+                    this.customerSearchResults = [];
+                    this.isSearchingCustomers = false;
+                    this.showCustomerResults = false;
+                },
                 clearCustomerSelection() {
                     this.customerId = null;
                     this.customerName = '';
@@ -803,6 +889,19 @@
 
                     window.open(this.invoiceUrl(saleId), '_blank');
                 },
+                setProductCategory(categoryId) {
+                    this.filters.activeCategory = categoryId;
+                    this.resetProductPagination();
+                },
+                resetProductPagination() {
+                    this.productPagination.page = 1;
+                },
+                previousProductPage() {
+                    this.productPagination.page = Math.max(this.normalizedProductPage - 1, 1);
+                },
+                nextProductPage() {
+                    this.productPagination.page = Math.min(this.normalizedProductPage + 1, this.productPageCount);
+                },
                 get filteredProducts() {
                     const term = (this.filters.search ?? '').trim().toLowerCase();
                     return this.products.filter((product) => {
@@ -821,6 +920,27 @@
                             .filter(Boolean)
                             .some((value) => value.toLowerCase().includes(term));
                     });
+                },
+                get productPageCount() {
+                    return Math.max(Math.ceil(this.filteredProducts.length / this.productPagination.perPage), 1);
+                },
+                get normalizedProductPage() {
+                    const page = Number(this.productPagination.page ?? 1);
+                    return Math.min(Math.max(page, 1), this.productPageCount);
+                },
+                get paginatedProducts() {
+                    const start = (this.normalizedProductPage - 1) * this.productPagination.perPage;
+                    return this.filteredProducts.slice(start, start + this.productPagination.perPage);
+                },
+                get productPageStart() {
+                    if (this.filteredProducts.length === 0) {
+                        return 0;
+                    }
+
+                    return ((this.normalizedProductPage - 1) * this.productPagination.perPage) + 1;
+                },
+                get productPageEnd() {
+                    return Math.min(this.normalizedProductPage * this.productPagination.perPage, this.filteredProducts.length);
                 },
                 get subtotal() {
                     return this.cart.reduce((total, item) => total + (item.line_subtotal ?? 0), 0);
@@ -882,6 +1002,9 @@
 
                     return this.effectiveAmountPaid >= this.grandTotal;
                 },
+                get canHoldOrder() {
+                    return this.cart.length > 0 && !this.isProcessing;
+                },
                 formatMoney(value) {
                     return 'रू. ' + new Intl.NumberFormat('ne-NP', {
                         minimumFractionDigits: 2,
@@ -890,6 +1013,10 @@
                 },
                 invoiceUrl(id) {
                     return this.invoiceTemplate.replace('__SALE__', id);
+                },
+                printInvoiceUrl(url) {
+                    const separator = url.includes('?') ? '&' : '?';
+                    return `${url}${separator}print=1`;
                 },
                 addToCart(product) {
                     if (!product || product.stock_quantity <= 0) {
@@ -973,7 +1100,7 @@
                     Livewire.dispatch('pos:checkout', { payload: this.buildPayload() });
                 },
                 holdCurrentOrder() {
-                    if (this.cart.length === 0 || this.isProcessing) {
+                    if (!this.canHoldOrder) {
                         return;
                     }
 
@@ -1016,7 +1143,7 @@
                     this.shouldPrintInvoice = true;
 
                     if (sale.invoice_url && shouldPrint) {
-                        window.open(sale.invoice_url, '_blank');
+                        window.open(this.printInvoiceUrl(sale.invoice_url), '_blank');
                     }
                 },
                 handleHoldCompleted({ heldOrder, heldOrders } = {}) {

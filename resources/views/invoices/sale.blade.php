@@ -4,7 +4,21 @@
     <meta charset="UTF-8">
     <title>Invoice {{ $sale->reference }}</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; color: #111827; font-size: 12px; margin: 0; padding: 24px; }
+        @font-face {
+            font-family: 'Noto Sans Devanagari';
+            font-style: normal;
+            font-weight: 400;
+            src: url('{{ resource_path('fonts/NotoSansDevanagari-Regular.ttf') }}') format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Noto Sans Devanagari';
+            font-style: normal;
+            font-weight: 600;
+            src: url('{{ resource_path('fonts/NotoSansDevanagari-Bold.ttf') }}') format('truetype');
+        }
+
+        body { font-family: 'Noto Sans Devanagari', DejaVu Sans, sans-serif; color: #111827; font-size: 12px; margin: 0; padding: 24px; }
         h1 { font-size: 20px; margin-bottom: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
         th, td { padding: 8px; border-bottom: 1px solid #d1d5db; text-align: left; }
@@ -14,6 +28,8 @@
         .totals table { width: 50%; margin-left: auto; }
         .totals td { border-bottom: none; }
         .footer { margin-top: 24px; font-size: 11px; text-align: center; color: #6b7280; }
+
+        @page { size: A5; margin: 0; }
     </style>
 </head>
 <body>
@@ -92,5 +108,13 @@
     <div class="footer">
         Thank you for shopping with us!
     </div>
+
+    @if ($autoPrint ?? false)
+        <script>
+            window.addEventListener('load', () => {
+                window.print();
+            });
+        </script>
+    @endif
 </body>
 </html>
