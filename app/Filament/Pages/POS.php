@@ -69,6 +69,7 @@ class POS extends Page
     public function checkoutFromClient(array $payload = []): void
     {
         $payload = $this->normalizeEventPayload($payload);
+        $shouldPrintInvoice = (bool) ($payload['should_print_invoice'] ?? false);
         $this->hydrateComponentState($payload);
 
         $sale = $this->checkout();
@@ -80,6 +81,7 @@ class POS extends Page
                 recentSales: $this->recentSalesPayload(),
                 lastSaleId: $this->lastSaleId,
                 products: $this->productsPayload(),
+                shouldPrintInvoice: false,
             );
 
             return;
@@ -91,6 +93,7 @@ class POS extends Page
             recentSales: $this->recentSalesPayload(),
             lastSaleId: $this->lastSaleId,
             products: $this->productsPayload(),
+            shouldPrintInvoice: $shouldPrintInvoice,
         );
     }
 

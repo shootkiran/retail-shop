@@ -1127,7 +1127,7 @@
                         payload: { heldOrderId }
                     });
                 },
-                handleCheckoutCompleted({ sale, recentSales, lastSaleId, products } = {}) {
+                handleCheckoutCompleted({ sale, recentSales, lastSaleId, products, shouldPrintInvoice = false } = {}) {
                     this.isProcessing = false;
 
                     if (!sale) {
@@ -1139,10 +1139,9 @@
                     this.clearCart();
                     this.lastSaleId = lastSaleId ?? sale.id ?? null;
 
-                    const shouldPrint = this.shouldPrintInvoice;
                     this.shouldPrintInvoice = true;
 
-                    if (sale.invoice_url && shouldPrint) {
+                    if (sale.invoice_url && shouldPrintInvoice) {
                         window.open(this.printInvoiceUrl(sale.invoice_url), '_blank');
                     }
                 },
@@ -1224,6 +1223,7 @@
                         payment_type: this.paymentType,
                         order_discount: this.hasOrderDiscount ? this.orderDiscount : 0,
                         amount_paid: paid,
+                        should_print_invoice: this.shouldPrintInvoice,
                         hold_name: this.holdName,
                         cart: this.cart.map((item) => ({
                             product_id: item.product_id,
