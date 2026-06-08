@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProductItems;
 
+use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\ProductItems\Pages\CreateProductItem;
 use App\Filament\Resources\ProductItems\Pages\EditProductItem;
 use App\Filament\Resources\ProductItems\Pages\ListProductItems;
@@ -17,6 +18,8 @@ use Filament\Tables\Table;
 
 class ProductItemResource extends Resource
 {
+    use RequiresBackOffice;
+
     protected static ?string $model = ProductItem::class;
 
     protected static BackedEnum|string|null $navigationIcon = Heroicon::OutlinedCube;

@@ -49,15 +49,15 @@ class PurchasesRelationManager extends RelationManager
                     ]),
                 TextColumn::make('grand_total')
                     ->label('Grand Total')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->sortable(),
                 TextColumn::make('amount_paid')
                     ->label('Amount Paid')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->sortable(),
                 TextColumn::make('amount_due')
                     ->label('Amount Due')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'warning' : 'success'),
                 TextColumn::make('purchased_at')
@@ -95,4 +95,3 @@ class PurchasesRelationManager extends RelationManager
             ]);
     }
 }
-

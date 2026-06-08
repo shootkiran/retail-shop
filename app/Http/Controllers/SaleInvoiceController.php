@@ -11,7 +11,7 @@ class SaleInvoiceController extends Controller
 {
     public function __invoke(Request $request, Sale $sale): Response
     {
-        $sale->loadMissing(['items.product', 'customer', 'paymentMethod']);
+        $sale->loadMissing(['items.product', 'customer', 'paymentMethod', 'business.settings', 'terminal']);
 
         if ($request->boolean('print')) {
             return response()->view('invoices.sale', [

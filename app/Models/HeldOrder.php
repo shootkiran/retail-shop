@@ -2,18 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HeldOrder extends Model
 {
+    use BelongsToBusiness;
     use HasFactory;
 
     protected $fillable = [
+        'business_id',
         'user_id',
         'customer_id',
         'payment_method_id',
+        'pos_terminal_id',
         'label',
         'payment_type',
         'order_discount',
@@ -42,5 +46,10 @@ class HeldOrder extends Model
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function terminal(): BelongsTo
+    {
+        return $this->belongsTo(PosTerminal::class, 'pos_terminal_id');
     }
 }

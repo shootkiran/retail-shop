@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,11 +11,14 @@ use Illuminate\Support\Str;
 
 class Sale extends Model
 {
+    use BelongsToBusiness;
     use HasFactory;
 
     protected $fillable = [
+        'business_id',
         'customer_id',
         'payment_method_id',
+        'pos_terminal_id',
         'reference',
         'status',
         'payment_status',
@@ -62,6 +66,11 @@ class Sale extends Model
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function terminal(): BelongsTo
+    {
+        return $this->belongsTo(PosTerminal::class, 'pos_terminal_id');
     }
 
     public function items(): HasMany

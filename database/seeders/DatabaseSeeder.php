@@ -3,7 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Customer;
+use App\Models\Business;
+use App\Models\BusinessSetting;
 use App\Models\PaymentMethod;
+use App\Models\PosTerminal;
 use App\Models\ProductCategory;
 use App\Models\ProductItem;
 use App\Models\User;
@@ -22,14 +25,72 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::query()->firstOrCreate(
+        $business = Business::query()->firstOrCreate(
+            ['slug' => 'default-retail-business'],
+            [
+                'name' => 'Default Retail Business',
+                'legal_name' => 'Default Retail Business',
+                'country' => config('retail.country'),
+                'timezone' => config('retail.timezone'),
+                'currency_code' => config('retail.currency.code'),
+                'currency_symbol' => config('retail.currency.symbol'),
+                'is_active' => true,
+            ],
+        );
+
+        BusinessSetting::query()->withoutGlobalScopes()->firstOrCreate(
+            ['business_id' => $business->id],
+            [
+                'country' => config('retail.country'),
+                'timezone' => config('retail.timezone'),
+                'currency_code' => config('retail.currency.code'),
+                'currency_symbol' => config('retail.currency.symbol'),
+                'currency_decimal_places' => config('retail.currency.decimal_places'),
+            ],
+        );
+
+        PosTerminal::query()->withoutGlobalScopes()->firstOrCreate(
+            ['business_id' => $business->id, 'code' => 'MAIN'],
+            [
+                'name' => 'Main Counter',
+                'location' => 'Front counter',
+                'is_active' => true,
+            ],
+        );
+
+        $admin = User::query()->updateOrCreate(
             ['email' => 'test@example.com'],
             [
                 'name' => 'Test User',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
+                'current_business_id' => $business->id,
+                'office_type' => 'back_office',
+                'is_platform_admin' => true,
+                'is_active' => true,
             ],
         );
+
+        $posUser = User::query()->updateOrCreate(
+            ['email' => 'shootkiran@gmail.com'],
+            [
+                'name' => 'Shoot Kiran',
+                'password' => Hash::make('TechCare@@2'),
+                'email_verified_at' => now(),
+                'current_business_id' => $business->id,
+                'office_type' => 'back_office',
+                'is_platform_admin' => true,
+                'is_active' => true,
+            ],
+        );
+
+        collect([$admin, $posUser])->each(fn (User $user) => $user->businesses()->syncWithoutDetaching([
+            $business->id => [
+                'role' => 'admin',
+                'office_type' => $user->office_type,
+                'is_active' => true,
+            ],
+        ]));
 
         $categories = collect([
             'Beverages' => 'Hot and cold drinks ready for checkout.',
@@ -38,6 +99,7 @@ class DatabaseSeeder extends Seeder
         ])->map(fn (string $description, string $name) => ProductCategory::firstOrCreate(
             ['name' => $name],
             [
+                'business_id' => $business->id,
                 'slug' => Str::slug($name),
                 'description' => $description,
             ],
@@ -68,7 +130,7 @@ class DatabaseSeeder extends Seeder
         ])->mapWithKeys(fn (array $vendor) => [
             $vendor['name'] => Vendor::updateOrCreate(
                 ['email' => $vendor['email']],
-                $vendor,
+                ['business_id' => $business->id, ...$vendor],
             ),
         ]);
 
@@ -151,10 +213,11 @@ class DatabaseSeeder extends Seeder
                 'category' => 'Household Supplies',
                 'vendor' => 'Home Essentials Depot',
             ],
-        ])->each(function (array $product) use ($categories, $vendors): void {
+        ])->each(function (array $product) use ($business, $categories, $vendors): void {
             ProductItem::updateOrCreate(
                 ['sku' => $product['sku']],
                 [
+                    'business_id' => $business->id,
                     'product_category_id' => $categories[$product['category']]->id,
                     'vendor_id' => $vendors[$product['vendor']]->id,
                     'name' => $product['name'],
@@ -229,16 +292,15 @@ class DatabaseSeeder extends Seeder
             );
 
             $name = trim(preg_replace('/\s+/', ' ', $name));
-            $skuSlug = Str::upper(Str::slug($name));
-            $skuBase = preg_replace('/[^A-Z0-9]/', '', $skuSlug);
-            $sku = sprintf('%s%04d', Str::substr($skuBase, 0, 8) ?: 'ITEM', $index);
+            $sku = sprintf('SEED-%04d', $index);
             $barcode = sprintf('900%09d', $index);
             $unitCost = $faker->randomFloat(2, 0.5, 80);
             $unitPrice = $unitCost + $faker->randomFloat(2, 0.2, 20);
 
             ProductItem::updateOrCreate(
-                ['sku' => $sku],
+                ['business_id' => $business->id, 'barcode' => $barcode],
                 [
+                    'business_id' => $business->id,
                     'product_category_id' => $categoryPool->random()->id,
                     'vendor_id' => $vendorPool->random()->id,
                     'name' => $name,
@@ -273,6 +335,7 @@ class DatabaseSeeder extends Seeder
         ])->each(fn (array $method) => PaymentMethod::updateOrCreate(
             ['name' => $method['name']],
             [
+                'business_id' => $business->id,
                 'type' => $method['type'],
                 'description' => $method['description'],
                 'is_active' => true,
@@ -318,7 +381,7 @@ class DatabaseSeeder extends Seeder
             ],
         ])->each(fn (array $customer) => Customer::updateOrCreate(
             ['email' => $customer['email']],
-            $customer,
+            ['business_id' => $business->id, ...$customer],
         ));
     }
 }

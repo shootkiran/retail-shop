@@ -32,7 +32,7 @@ class ProductItemsTable
                     ->toggleable(),
                 TextColumn::make('unit_price')
                     ->label('Price')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->sortable(),
                 TextColumn::make('tax_rate')
                     ->label('Tax %')

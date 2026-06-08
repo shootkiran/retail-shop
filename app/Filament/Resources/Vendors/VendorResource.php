@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Vendors;
 
+use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\Vendors\Pages\CreateVendor;
 use App\Filament\Resources\Vendors\Pages\EditVendor;
 use App\Filament\Resources\Vendors\Pages\ListVendors;
@@ -18,6 +19,8 @@ use Filament\Tables\Table;
 
 class VendorResource extends Resource
 {
+    use RequiresBackOffice;
+
     protected static ?string $model = Vendor::class;
 
     protected static BackedEnum|string|null $navigationIcon = Heroicon::OutlinedBuildingStorefront;

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Sales;
 
+use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\Sales\Pages\CreateSale;
 use App\Filament\Resources\Sales\Pages\EditSale;
 use App\Filament\Resources\Sales\Pages\ListSales;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class SaleResource extends Resource
 {
+    use RequiresBackOffice;
+
     protected static ?string $model = Sale::class;
 
     protected static BackedEnum|string|null $navigationIcon = Heroicon::OutlinedCurrencyDollar;

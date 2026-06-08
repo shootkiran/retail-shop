@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PaymentMethods;
 
+use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\PaymentMethods\Pages\CreatePaymentMethod;
 use App\Filament\Resources\PaymentMethods\Pages\EditPaymentMethod;
 use App\Filament\Resources\PaymentMethods\Pages\ListPaymentMethods;
@@ -17,6 +18,8 @@ use Filament\Tables\Table;
 
 class PaymentMethodResource extends Resource
 {
+    use RequiresBackOffice;
+
     protected static ?string $model = PaymentMethod::class;
 
     protected static BackedEnum|string|null $navigationIcon = Heroicon::OutlinedBanknotes;

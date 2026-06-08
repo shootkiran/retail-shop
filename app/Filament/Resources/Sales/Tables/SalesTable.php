@@ -54,15 +54,15 @@ class SalesTable
                     ]),
                 TextColumn::make('grand_total')
                     ->label('Grand Total')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->sortable(),
                 TextColumn::make('amount_paid')
                     ->label('Amount Paid')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->sortable(),
                 TextColumn::make('amount_due')
                     ->label('Amount Due')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'danger' : 'success'),
                 TextColumn::make('sold_at')

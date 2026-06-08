@@ -81,12 +81,28 @@
                     <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">Quick Actions</h2>
 
                     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <template x-if="terminals.length > 1">
+                            <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
+                                <span>POS Terminal</span>
+                                <select
+                                    x-model.number="posTerminalId"
+                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-normal shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-950 dark:text-white"
+                                >
+                                    <option value="">Select terminal</option>
+                                    <template x-for="terminal in terminals" :key="terminal.id">
+                                        <option :value="terminal.id" x-text="terminal.name + ' (' + terminal.code + ')'"></option>
+                                    </template>
+                                </select>
+                            </label>
+                        </template>
+
                         <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
                             <span>Search Products</span>
                             <input
                                 type="search"
                                 x-model.debounce.300ms="filters.search"
                                 @input="resetProductPagination()"
+                                :disabled="!canUseTerminal"
                                 placeholder="Search by name, SKU or barcode"
                                 autocomplete="off"
                                 class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-normal shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-950 dark:text-white"
@@ -98,6 +114,7 @@
                             <input
                                 type="text"
                                 x-model="scanner.input"
+                                :disabled="!canUseTerminal"
                                 placeholder="Scan or enter barcode"
                                 autocomplete="off"
                                 @keydown.enter.prevent="applyBarcode()"
@@ -118,6 +135,12 @@
                         </div>
                     </div>
                 </section>
+
+                <template x-if="!canUseTerminal">
+                    <section class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-800 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                        Select a POS terminal before adding products or processing an order.
+                    </section>
+                </template>
 
                 <template x-if="heldOrders.length">
                     <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
@@ -233,7 +256,7 @@
                             <button
                                 type="button"
                                 @click="addToCart(product)"
-                                :disabled="isProcessing"
+                                :disabled="isProcessing || !canUseTerminal"
                                 class="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary-600 px-3 py-2 text-[0.7rem] font-semibold text-white transition hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <x-heroicon-o-plus class="h-3.5 w-3.5" />
@@ -691,6 +714,10 @@
                 paymentMethods: initial.paymentMethods ?? [],
                 heldOrders: initial.heldOrders ?? [],
                 recentSales: initial.recentSales ?? [],
+                terminals: initial.terminals ?? [],
+                posTerminalId: initial.defaults?.pos_terminal_id !== undefined && initial.defaults?.pos_terminal_id !== null
+                    ? Number(initial.defaults?.pos_terminal_id)
+                    : null,
                 filters: {
                     search: '',
                     activeCategory: null,
@@ -992,6 +1019,10 @@
                         return false;
                     }
 
+                    if (!this.canUseTerminal) {
+                        return false;
+                    }
+
                     if (this.paymentType === 'paid') {
                         return this.effectiveAmountPaid >= this.grandTotal;
                     }
@@ -1003,7 +1034,10 @@
                     return this.effectiveAmountPaid >= this.grandTotal;
                 },
                 get canHoldOrder() {
-                    return this.cart.length > 0 && !this.isProcessing;
+                    return this.cart.length > 0 && !this.isProcessing && this.canUseTerminal;
+                },
+                get canUseTerminal() {
+                    return this.terminals.length <= 1 || Boolean(this.posTerminalId);
                 },
                 formatMoney(value) {
                     return 'रू. ' + new Intl.NumberFormat('ne-NP', {
@@ -1020,6 +1054,10 @@
                 },
                 addToCart(product) {
                     if (!product || product.stock_quantity <= 0) {
+                        return;
+                    }
+
+                    if (!this.canUseTerminal) {
                         return;
                     }
                     //todo show message " No Stock Available " to add to cart when stock is 0 . check if product is of type service, no need to show quantity and check for availabilty
@@ -1187,6 +1225,7 @@
                         this.amountPaid = Number(defaults.amount_paid ?? 0);
                         this.amountTendered = this.amountPaid;
                         this.lastSaleId = defaults.last_sale_id ?? null;
+                        this.posTerminalId = defaults.pos_terminal_id ?? this.posTerminalId;
 
                         if (this.paymentType === 'paid') {
                             this.paymentMethodId = defaults.payment_method_id ?? this.defaultPaymentMethodId;
@@ -1223,6 +1262,7 @@
                         payment_type: this.paymentType,
                         order_discount: this.hasOrderDiscount ? this.orderDiscount : 0,
                         amount_paid: paid,
+                        pos_terminal_id: this.posTerminalId,
                         should_print_invoice: this.shouldPrintInvoice,
                         hold_name: this.holdName,
                         cart: this.cart.map((item) => ({

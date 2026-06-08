@@ -41,11 +41,11 @@ class SalesRelationManager extends RelationManager
                     ]),
                 TextColumn::make('grand_total')
                     ->label('Grand Total')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->sortable(),
                 TextColumn::make('amount_due')
                     ->label('Amount Due')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->badge()
                     ->color(fn (string | float | null $state): string => (float) $state > 0 ? 'danger' : 'success'),
                 TextColumn::make('sold_at')
@@ -89,4 +89,3 @@ class SalesRelationManager extends RelationManager
             ]);
     }
 }
-

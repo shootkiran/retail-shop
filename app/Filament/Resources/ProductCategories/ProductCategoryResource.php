@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProductCategories;
 
+use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\ProductCategories\Pages\CreateProductCategory;
 use App\Filament\Resources\ProductCategories\Pages\EditProductCategory;
 use App\Filament\Resources\ProductCategories\Pages\ListProductCategories;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ProductCategoryResource extends Resource
 {
+    use RequiresBackOffice;
+
     protected static ?string $model = ProductCategory::class;
 
     protected static BackedEnum|string|null $navigationIcon = Heroicon::OutlinedSquares2x2;

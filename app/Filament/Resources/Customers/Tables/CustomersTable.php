@@ -36,7 +36,7 @@ class CustomersTable
                     ->visible(fn (?Customer $record) => filled($record?->company)),
                 TextColumn::make('outstanding_balance')
                     ->label('Balance')
-                    ->money('ngn')
+                    ->money('NPR')
                     ->sortable(),
             ])
             ->filters([

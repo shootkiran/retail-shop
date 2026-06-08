@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Customer;
 use App\Models\HeldOrder;
 use App\Models\PaymentMethod;
+use App\Models\PosTerminal;
 use App\Models\ProductCategory;
 use App\Models\ProductItem;
 use App\Models\Sale;
@@ -58,11 +59,19 @@ class POS extends Page
 
     public ?int $heldOrderId = null;
 
+    public ?int $posTerminalId = null;
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->canUseFrontOffice() ?? false;
+    }
+
     public function mount(): void
     {
         $this->cart = [];
         $this->customerName = null;
         $this->paymentMethodId = $this->resolveDefaultPaymentMethodId();
+        $this->posTerminalId = $this->resolveSelectedTerminalId();
     }
 
     #[On('pos:checkout')]
@@ -192,6 +201,7 @@ class POS extends Page
             'paymentMethods' => $this->paymentMethodsPayload(),
             'heldOrders' => $this->heldOrdersPayload(),
             'recentSales' => $this->recentSalesPayload(),
+            'terminals' => $this->terminalsPayload(),
             'defaults' => $this->defaultsPayload(),
         ];
     }
@@ -226,6 +236,7 @@ class POS extends Page
         $this->orderDiscount = $this->sanitizeMoney($payload['order_discount'] ?? 0);
         $this->amountPaid = $this->sanitizeMoney($payload['amount_paid'] ?? 0);
         $this->holdName = trim((string) ($payload['hold_name'] ?? ''));
+        $this->posTerminalId = $this->resolveSelectedTerminalId($this->nullableInt($payload['pos_terminal_id'] ?? null));
 
         $this->hydrateCartFromPayload($payload['cart'] ?? []);
     }
@@ -297,6 +308,7 @@ class POS extends Page
             'payment_type' => $heldOrder->payment_type,
             'order_discount' => (float) $heldOrder->order_discount,
             'amount_paid' => (float) $heldOrder->amount_paid,
+            'pos_terminal_id' => $heldOrder->pos_terminal_id,
             'cart' => $items,
             'preview' => $this->buildHeldOrderPreview($items),
             'updated_at_for_humans' => optional($heldOrder->updated_at)->diffForHumans() ?? '',
@@ -354,6 +366,19 @@ class POS extends Page
             ->map(fn ($method) => [
                 'id' => $method->id,
                 'name' => $method->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    protected function terminalsPayload(): array
+    {
+        return $this->terminals
+            ->map(fn (PosTerminal $terminal) => [
+                'id' => $terminal->id,
+                'name' => $terminal->name,
+                'code' => $terminal->code,
+                'location' => $terminal->location,
             ])
             ->values()
             ->all();
@@ -444,6 +469,7 @@ class POS extends Page
         $this->paymentType = $heldOrder->payment_type;
         $this->orderDiscount = (float) $heldOrder->order_discount;
         $this->amountPaid = (float) $heldOrder->amount_paid;
+        $this->posTerminalId = $this->resolveSelectedTerminalId($heldOrder->pos_terminal_id);
         $this->lastSaleId = null;
 
         $this->hydrateCartFromPayload(data_get($heldOrder->cart, 'items', []));
@@ -478,8 +504,31 @@ class POS extends Page
         $this->heldOrderId = null;
     }
 
+    protected function ensureTerminalSelected(): bool
+    {
+        if ($this->terminals->isEmpty()) {
+            return true;
+        }
+
+        if ($this->posTerminalId) {
+            return true;
+        }
+
+        Notification::make()
+            ->title('Select POS terminal')
+            ->body('Choose a POS terminal before holding or checking out this order.')
+            ->warning()
+            ->send();
+
+        return false;
+    }
+
     public function holdOrder(): ?HeldOrder
     {
+        if (! $this->ensureTerminalSelected()) {
+            return null;
+        }
+
         if (empty($this->cart)) {
             Notification::make()
                 ->title('Nothing to hold')
@@ -496,6 +545,7 @@ class POS extends Page
             'user_id' => Auth::id(),
             'customer_id' => $this->customerId,
             'payment_method_id' => $this->paymentMethodId,
+            'pos_terminal_id' => $this->posTerminalId,
             'label' => Str::limit($label, 80),
             'payment_type' => $this->paymentType,
             'order_discount' => $this->orderDiscount,
@@ -531,6 +581,10 @@ class POS extends Page
 
     public function checkout(): ?Sale
     {
+        if (! $this->ensureTerminalSelected()) {
+            return null;
+        }
+
         if (empty($this->cart)) {
             Notification::make()
                 ->title('Cart empty')
@@ -562,6 +616,7 @@ class POS extends Page
                 $sale = Sale::create([
                     'customer_id' => $this->customerId,
                     'payment_method_id' => $this->paymentMethodId,
+                    'pos_terminal_id' => $this->posTerminalId,
                     'status' => 'completed',
                     'payment_status' => $paymentStatus,
                     'payment_type' => $this->paymentType,
@@ -646,8 +701,17 @@ class POS extends Page
             'order_discount' => $this->orderDiscount,
             'amount_paid' => $this->amountPaid,
             'last_sale_id' => $this->lastSaleId,
+            'pos_terminal_id' => $this->posTerminalId,
             'invoice_url_template' => $this->invoiceUrlTemplate,
         ];
+    }
+
+    public function getTerminalsProperty(): Collection
+    {
+        return PosTerminal::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'location']);
     }
 
     public function getCategoriesProperty(): Collection
@@ -702,7 +766,7 @@ class POS extends Page
             ->with('customer:id,name')
             ->latest()
             ->limit(10)
-            ->get(['id', 'label', 'customer_id', 'cart', 'updated_at']);
+            ->get(['id', 'label', 'customer_id', 'payment_method_id', 'payment_type', 'order_discount', 'amount_paid', 'pos_terminal_id', 'cart', 'updated_at']);
     }
 
     public function getRecentSalesProperty(): Collection
@@ -712,6 +776,35 @@ class POS extends Page
             ->latest()
             ->limit(5)
             ->get(['id', 'reference', 'grand_total', 'sold_at']);
+    }
+
+    protected function resolveSelectedTerminalId(?int $requestedTerminalId = null): ?int
+    {
+        $terminalIds = $this->terminals->pluck('id')->all();
+
+        if (empty($terminalIds)) {
+            session()->forget('pos_terminal_id');
+
+            return null;
+        }
+
+        $candidate = $requestedTerminalId ?: session('pos_terminal_id');
+
+        if ($candidate && in_array((int) $candidate, $terminalIds, true)) {
+            session(['pos_terminal_id' => (int) $candidate]);
+
+            return (int) $candidate;
+        }
+
+        if (count($terminalIds) === 1) {
+            session(['pos_terminal_id' => (int) $terminalIds[0]]);
+
+            return (int) $terminalIds[0];
+        }
+
+        session()->forget('pos_terminal_id');
+
+        return null;
     }
 
     public function getSubtotalProperty(): float

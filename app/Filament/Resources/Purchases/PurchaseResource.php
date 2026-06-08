@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Purchases;
 
+use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\Purchases\Pages\CreatePurchase;
 use App\Filament\Resources\Purchases\Pages\EditPurchase;
 use App\Filament\Resources\Purchases\Pages\ListPurchases;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class PurchaseResource extends Resource
 {
+    use RequiresBackOffice;
+
     protected static ?string $model = Purchase::class;
 
     protected static BackedEnum|string|null $navigationIcon = Heroicon::OutlinedShoppingCart;
