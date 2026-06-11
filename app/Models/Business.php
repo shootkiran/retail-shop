@@ -48,11 +48,28 @@ class Business extends Model
                 'currency_decimal_places' => config('retail.currency.decimal_places'),
             ]);
 
+            $business->units()->firstOrCreate([
+                'name' => 'Piece',
+            ], [
+                'symbol' => 'pcs',
+                'multiplier_to_base' => 1,
+                'is_base' => true,
+                'is_active' => true,
+            ]);
+
             $business->terminals()->firstOrCreate([
                 'code' => 'MAIN',
             ], [
                 'name' => 'Main Counter',
                 'location' => 'Front counter',
+                'is_active' => true,
+            ]);
+
+            $business->cashRegisters()->firstOrCreate([
+                'name' => 'Main Cash Drawer',
+            ], [
+                'code' => 'MAIN-CASH',
+                'opening_balance' => 0,
                 'is_active' => true,
             ]);
         });
@@ -66,6 +83,21 @@ class Business extends Model
     public function terminals(): HasMany
     {
         return $this->hasMany(PosTerminal::class);
+    }
+
+    public function units(): HasMany
+    {
+        return $this->hasMany(Unit::class);
+    }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class);
+    }
+
+    public function cashRegisters(): HasMany
+    {
+        return $this->hasMany(CashRegister::class);
     }
 
     public function users(): BelongsToMany

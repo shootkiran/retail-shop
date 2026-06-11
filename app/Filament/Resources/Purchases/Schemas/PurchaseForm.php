@@ -65,6 +65,13 @@ class PurchaseForm
                                 ->preload()
                                 ->columnSpan(2)
                                 ->required(),
+                            Select::make('unit_id')
+                                ->label('Unit')
+                                ->relationship('unit', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->placeholder('Base unit')
+                                ->columnSpan(1),
                             TextInput::make('quantity')
                                 ->numeric()
                                 ->default(1)

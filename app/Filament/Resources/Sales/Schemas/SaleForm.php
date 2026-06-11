@@ -54,6 +54,19 @@ class SaleForm
                         ])
                         ->default('pending')
                         ->required(),
+                    Select::make('delivery_option')
+                        ->label('Delivery Option')
+                        ->options([
+                            null => 'No delivery',
+                            'pickup' => 'Pickup',
+                            'delivery' => 'Delivery',
+                        ])
+                        ->placeholder('No delivery'),
+                    TextInput::make('delivery_charge')
+                        ->numeric()
+                        ->prefix('रू')
+                        ->default(0)
+                        ->minValue(0),
                     DateTimePicker::make('sold_at')
                         ->label('Sale Date')
                         ->native(false)
@@ -79,6 +92,13 @@ class SaleForm
                                 ->preload()
                                 ->columnSpan(2)
                                 ->required(),
+                            Select::make('unit_id')
+                                ->label('Unit')
+                                ->relationship('unit', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->placeholder('Base unit')
+                                ->columnSpan(1),
                             TextInput::make('quantity')
                                 ->numeric()
                                 ->default(1)
@@ -177,6 +197,7 @@ class SaleForm
         $lineDiscount = $items->sum(fn ($item) => (float) ($item['discount_amount'] ?? 0));
         $orderDiscount = (float) $get('order_discount');
         $tax = (float) $get('tax_amount');
+        $deliveryCharge = (float) $get('delivery_charge');
         $amountPaid = (float) $get('amount_paid');
 
         $totalDiscount = $lineDiscount + $orderDiscount;
@@ -185,7 +206,7 @@ class SaleForm
         $set('total_amount', $lineTotal);
         $set('discount_amount', $totalDiscount);
 
-        $grandTotal = max($taxable + $tax, 0);
+        $grandTotal = max($taxable + $tax + $deliveryCharge, 0);
         $set('grand_total', $grandTotal);
 
         $set('amount_due', max($grandTotal - $amountPaid, 0));

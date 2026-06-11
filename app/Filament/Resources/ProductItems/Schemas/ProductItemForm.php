@@ -38,6 +38,12 @@ class ProductItemForm
                         ->relationship('vendor', 'name')
                         ->searchable()
                         ->preload(),
+                    Select::make('base_unit_id')
+                        ->label('Base Unit')
+                        ->relationship('baseUnit', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->placeholder('pcs'),
                     Textarea::make('description')
                         ->rows(3)
                         ->columnSpanFull(),

@@ -17,6 +17,7 @@ class ProductItem extends Model
         'business_id',
         'product_category_id',
         'vendor_id',
+        'base_unit_id',
         'name',
         'sku',
         'barcode',
@@ -46,6 +47,11 @@ class ProductItem extends Model
         return $this->belongsTo(Vendor::class);
     }
 
+    public function baseUnit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'base_unit_id');
+    }
+
     public function saleItems(): HasMany
     {
         return $this->hasMany(SaleItem::class);
@@ -54,5 +60,16 @@ class ProductItem extends Model
     public function purchaseItems(): HasMany
     {
         return $this->hasMany(PurchaseItem::class);
+    }
+
+    public function getStockDisplayAttribute(): string
+    {
+        $unit = $this->baseUnit;
+
+        if (! $unit) {
+            return number_format((float) $this->stock_quantity, 0) . ' pcs';
+        }
+
+        return number_format($unit->fromBase((float) $this->stock_quantity), 2) . ' ' . ($unit->symbol ?: $unit->name);
     }
 }

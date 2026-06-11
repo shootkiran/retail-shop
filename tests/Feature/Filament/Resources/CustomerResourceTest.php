@@ -30,7 +30,6 @@ class CustomerResourceTest extends FilamentTestCase
                 'phone' => $customerData->phone,
                 'billing_address' => $customerData->billing_address,
                 'credit_limit' => $customerData->credit_limit,
-                'outstanding_balance' => $customerData->outstanding_balance,
             ])
             ->call('create')
             ->assertHasNoFormErrors()
@@ -40,6 +39,7 @@ class CustomerResourceTest extends FilamentTestCase
         $this->assertDatabaseHas(Customer::class, [
             'email' => $customerData->email,
             'name' => $customerData->name,
+            'outstanding_balance' => 0,
         ]);
     }
 

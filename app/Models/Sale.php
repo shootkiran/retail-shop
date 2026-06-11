@@ -23,6 +23,8 @@ class Sale extends Model
         'status',
         'payment_status',
         'payment_type',
+        'delivery_option',
+        'delivery_charge',
         'total_amount',
         'discount_amount',
         'order_discount',
@@ -39,6 +41,7 @@ class Sale extends Model
         'discount_amount' => 'decimal:2',
         'order_discount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
+        'delivery_charge' => 'decimal:2',
         'grand_total' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'amount_due' => 'decimal:2',
@@ -89,12 +92,13 @@ class Sale extends Model
         $lineTotal = $this->items->sum(fn (SaleItem $item) => $item->quantity * $item->unit_price);
         $lineDiscount = $this->items->sum('discount_amount');
         $orderDiscount = (float) $this->order_discount;
+        $deliveryCharge = (float) $this->delivery_charge;
         $totalDiscount = $lineDiscount + $orderDiscount;
 
         $this->forceFill([
             'total_amount' => $lineTotal,
             'discount_amount' => $totalDiscount,
-            'grand_total' => max($lineTotal - $totalDiscount + $this->tax_amount, 0),
+            'grand_total' => max($lineTotal - $totalDiscount + $this->tax_amount + $deliveryCharge, 0),
         ]);
 
         $this->amount_due = max($this->grand_total - $this->amount_paid, 0);

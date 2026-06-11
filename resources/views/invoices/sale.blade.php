@@ -99,6 +99,12 @@
                 <td>Tax</td>
                 <td class="text-right">{{ $currencySymbol }}{{ number_format($sale->tax_amount, 2) }}</td>
             </tr>
+            @if ((float) $sale->delivery_charge > 0)
+                <tr>
+                    <td>Delivery Charge</td>
+                    <td class="text-right">{{ $currencySymbol }}{{ number_format($sale->delivery_charge, 2) }}</td>
+                </tr>
+            @endif
             <tr>
                 <td style="font-weight: 600;">Grand Total</td>
                 <td class="text-right" style="font-weight: 600;">{{ $currencySymbol }}{{ number_format($sale->grand_total, 2) }}</td>
@@ -119,6 +125,24 @@
     <div class="footer">
         Thank you for shopping with us!
     </div>
+
+    @if ($showReceipt ?? false)
+        <div style="page-break-before: always; margin-top: 20px;">
+            <h1>{{ $business->name ?? 'Retail POS' }} Payment Receipt</h1>
+            <p style="margin: 0;">Reference: <strong>{{ $sale->reference }}</strong></p>
+            <p style="margin: 0;">Date: {{ $soldAt->format($settings?->date_format ?: 'd M Y') }} {{ $soldAt->format($settings?->time_format ?: 'H:i') }}</p>
+            <p style="margin: 0;">Payment Type: {{ ucfirst($sale->payment_type) }}</p>
+            <p style="margin: 0;">Payment Method: {{ $sale->paymentMethod->name ?? 'N/A' }}</p>
+            <p style="margin: 0;">Amount Received: {{ $currencySymbol }}{{ number_format($sale->amount_paid, 2) }}</p>
+            <p style="margin: 0;">Balance Due: {{ $currencySymbol }}{{ number_format($sale->amount_due, 2) }}</p>
+            @if ($sale->customer)
+                <p style="margin: 0;">Customer: {{ $sale->customer->name }}</p>
+            @endif
+            <div class="footer">
+                Payment received and recorded successfully.
+            </div>
+        </div>
+    @endif
 
     @if ($autoPrint ?? false)
         <script>

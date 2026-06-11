@@ -27,7 +27,7 @@ class VendorResourceTest extends FilamentTestCase
                 'name' => $vendorData->name,
                 'contact_person' => $vendorData->contact_person,
                 'email' => $vendorData->email,
-                'phone' => $vendorData->phone,
+                'phone' => '9800000000',
                 'address' => $vendorData->address,
             ])
             ->call('create')

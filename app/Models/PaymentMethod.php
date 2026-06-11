@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToBusiness;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class PaymentMethod extends Model
 {
@@ -17,6 +18,8 @@ class PaymentMethod extends Model
         'name',
         'type',
         'description',
+        'settlement_account_type',
+        'settlement_account_id',
         'is_active',
     ];
 
@@ -32,5 +35,10 @@ class PaymentMethod extends Model
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class);
+    }
+
+    public function settlementAccount(): MorphTo
+    {
+        return $this->morphTo();
     }
 }

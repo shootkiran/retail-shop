@@ -96,14 +96,18 @@ class DatabaseSeeder extends Seeder
             'Beverages' => 'Hot and cold drinks ready for checkout.',
             'Snacks' => 'Quick bites and packaged treats for customers on the go.',
             'Household Supplies' => 'Daily essentials and cleaning materials for home care.',
-        ])->map(fn (string $description, string $name) => ProductCategory::firstOrCreate(
-            ['name' => $name],
-            [
-                'business_id' => $business->id,
-                'slug' => Str::slug($name),
-                'description' => $description,
-            ],
-        ));
+        ])->map(fn (string $description, string $name) => ProductCategory::query()
+            ->withoutGlobalScopes()
+            ->updateOrCreate(
+                [
+                    'business_id' => $business->id,
+                    'slug' => Str::slug($name),
+                ],
+                [
+                    'name' => $name,
+                    'description' => $description,
+                ],
+            ));
 
         $vendors = collect([
             [
@@ -128,10 +132,12 @@ class DatabaseSeeder extends Seeder
                 'address' => '19 Warehouse Road, Lakeside',
             ],
         ])->mapWithKeys(fn (array $vendor) => [
-            $vendor['name'] => Vendor::updateOrCreate(
-                ['email' => $vendor['email']],
-                ['business_id' => $business->id, ...$vendor],
-            ),
+            $vendor['name'] => Vendor::query()
+                ->withoutGlobalScopes()
+                ->updateOrCreate(
+                    ['email' => $vendor['email']],
+                    ['business_id' => $business->id, ...$vendor],
+                ),
         ]);
 
         collect([
@@ -214,8 +220,10 @@ class DatabaseSeeder extends Seeder
                 'vendor' => 'Home Essentials Depot',
             ],
         ])->each(function (array $product) use ($business, $categories, $vendors): void {
-            ProductItem::updateOrCreate(
-                ['sku' => $product['sku']],
+            ProductItem::query()
+                ->withoutGlobalScopes()
+                ->updateOrCreate(
+                    ['sku' => $product['sku']],
                 [
                     'business_id' => $business->id,
                     'product_category_id' => $categories[$product['category']]->id,
@@ -230,7 +238,7 @@ class DatabaseSeeder extends Seeder
                     'reorder_level' => $product['reorder_level'],
                     'is_active' => true,
                 ],
-            );
+                );
         });
 
         $faker = fake();
@@ -297,8 +305,10 @@ class DatabaseSeeder extends Seeder
             $unitCost = $faker->randomFloat(2, 0.5, 80);
             $unitPrice = $unitCost + $faker->randomFloat(2, 0.2, 20);
 
-            ProductItem::updateOrCreate(
-                ['business_id' => $business->id, 'barcode' => $barcode],
+            ProductItem::query()
+                ->withoutGlobalScopes()
+                ->updateOrCreate(
+                    ['barcode' => $barcode],
                 [
                     'business_id' => $business->id,
                     'product_category_id' => $categoryPool->random()->id,
@@ -313,7 +323,7 @@ class DatabaseSeeder extends Seeder
                     'reorder_level' => $faker->numberBetween(5, 50),
                     'is_active' => true,
                 ],
-            );
+                );
         }
 
         collect([
@@ -332,15 +342,17 @@ class DatabaseSeeder extends Seeder
                 'type' => 'online',
                 'description' => 'Bank and mobile money transfers with confirmation.',
             ],
-        ])->each(fn (array $method) => PaymentMethod::updateOrCreate(
-            ['name' => $method['name']],
-            [
-                'business_id' => $business->id,
-                'type' => $method['type'],
-                'description' => $method['description'],
-                'is_active' => true,
-            ],
-        ));
+        ])->each(fn (array $method) => PaymentMethod::query()
+            ->withoutGlobalScopes()
+            ->updateOrCreate(
+                ['name' => $method['name']],
+                [
+                    'business_id' => $business->id,
+                    'type' => $method['type'],
+                    'description' => $method['description'],
+                    'is_active' => true,
+                ],
+            ));
 
         collect([
             [
@@ -379,9 +391,11 @@ class DatabaseSeeder extends Seeder
                 'credit_limit' => 1500,
                 'outstanding_balance' => 450,
             ],
-        ])->each(fn (array $customer) => Customer::updateOrCreate(
-            ['email' => $customer['email']],
-            ['business_id' => $business->id, ...$customer],
-        ));
+        ])->each(fn (array $customer) => Customer::query()
+            ->withoutGlobalScopes()
+            ->updateOrCreate(
+                ['email' => $customer['email']],
+                ['business_id' => $business->id, ...$customer],
+            ));
     }
 }

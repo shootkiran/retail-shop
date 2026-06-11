@@ -49,7 +49,8 @@ class CustomerForm
                         ->disabled()
                         ->numeric()
                         ->prefix('रू')
-                        ->dehydrated(),
+                        ->default(0)
+                        ->dehydrated(false),
                 ]),
         ]);
     }

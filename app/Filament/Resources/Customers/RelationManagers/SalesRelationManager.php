@@ -4,6 +4,10 @@ namespace App\Filament\Resources\Customers\RelationManagers;
 
 use App\Filament\Resources\Sales\SaleResource;
 use App\Models\Sale;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Columns\BadgeColumn;
@@ -78,13 +82,13 @@ class SalesRelationManager extends RelationManager
             ])
             ->headerActions([])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->url(fn (Sale $record): string => SaleResource::getUrl('edit', ['record' => $record])),
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Customer;
 use App\Models\HeldOrder;
 use App\Models\PaymentMethod;
+use App\Models\FinancialEntry;
 use App\Models\PosTerminal;
 use App\Models\ProductCategory;
 use App\Models\ProductItem;
@@ -595,6 +596,26 @@ class POS extends Page
             return null;
         }
 
+        if ($this->paymentType === 'credit' && ! $this->customerId) {
+            Notification::make()
+                ->title('Customer required')
+                ->body('Select a customer before completing a credit sale.')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        if ($this->paymentType === 'paid' && ! $this->paymentMethodId) {
+            Notification::make()
+                ->title('Payment method required')
+                ->body('Configure a payment method before completing this sale.')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
         $this->clampOrderDiscount();
 
         $subtotal = $this->subtotal;
@@ -612,6 +633,61 @@ class POS extends Page
 
         try {
             DB::transaction(function () use (&$sale, $subtotal, $totalDiscount, $taxAmount, $grandTotal, $amountPaid, $amountDue, $paymentStatus, $cartItems): void {
+                $productIds = $cartItems->pluck('product_id')
+                    ->filter()
+                    ->map(fn ($productId) => (int) $productId)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $lockedProducts = ProductItem::query()
+                    ->whereKey($productIds)
+                    ->lockForUpdate()
+                    ->get(['id', 'name', 'stock_quantity'])
+                    ->keyBy('id');
+
+                if ($lockedProducts->count() !== count($productIds)) {
+                    throw new \RuntimeException('One or more products are no longer available.');
+                }
+
+                foreach ($cartItems as $item) {
+                    $productId = (int) ($item['product_id'] ?? 0);
+                    $quantity = max((int) ($item['quantity'] ?? 0), 0);
+                    $product = $lockedProducts->get($productId);
+
+                    if (! $product instanceof ProductItem) {
+                        throw new \RuntimeException('One or more products are no longer available.');
+                    }
+
+                    if ($quantity <= 0) {
+                        throw new \RuntimeException('Invalid quantity for "' . $product->name . '".');
+                    }
+
+                    if ((int) $product->stock_quantity < $quantity) {
+                        throw new \RuntimeException('Insufficient stock for "' . $product->name . '".');
+                    }
+                }
+
+                $customer = null;
+
+                if ($amountDue > 0) {
+                    $customer = Customer::query()
+                        ->whereKey($this->customerId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $customer instanceof Customer) {
+                        throw new \RuntimeException('Selected customer could not be found.');
+                    }
+
+                    $projectedBalance = (float) $customer->outstanding_balance + $amountDue;
+                    $creditLimit = (float) $customer->credit_limit;
+
+                    if ($creditLimit > 0 && $projectedBalance - $creditLimit > 0.01) {
+                        throw new \RuntimeException('Customer credit limit exceeded.');
+                    }
+                }
+
                 /** @var Sale $sale */
                 $sale = Sale::create([
                     'customer_id' => $this->customerId,
@@ -640,12 +716,37 @@ class POS extends Page
                     ])->all()
                 );
 
-                foreach ($cartItems as $item) {
-                    ProductItem::query()
-                        ->whereKey($item['product_id'])
-                        ->decrement('stock_quantity', $item['quantity']);
+                $paymentMethod = PaymentMethod::query()
+                    ->with('settlementAccount')
+                    ->find($this->paymentMethodId);
+
+                if ($amountPaid > 0 && $paymentMethod?->settlementAccount) {
+                    $account = $paymentMethod->settlementAccount;
+
+                    FinancialEntry::create([
+                        'accountable_type' => $account::class,
+                        'accountable_id' => $account->getKey(),
+                        'entry_type' => 'sale_receipt',
+                        'direction' => 'credit',
+                        'amount' => $amountPaid,
+                        'entry_date' => now()->toDateString(),
+                        'reference' => $sale->reference,
+                        'notes' => 'Sale receipt from POS checkout.',
+                    ]);
+                }
+
+                if ($customer instanceof Customer && $amountDue > 0) {
+                    $customer->increment('outstanding_balance', $amountDue);
                 }
             });
+        } catch (\RuntimeException $exception) {
+            Notification::make()
+                ->title('Checkout blocked')
+                ->body($exception->getMessage())
+                ->warning()
+                ->send();
+
+            return null;
         } catch (ModelNotFoundException|
             \Throwable $exception) {
             report($exception);
@@ -659,6 +760,7 @@ class POS extends Page
             return null;
         }
 
+        $sale?->refresh();
         $saleId = $sale->id;
         $saleReference = $sale->reference;
 
