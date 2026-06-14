@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\Sales\Tables;
 
 use App\Filament\Resources\Customers\CustomerResource;
+use App\Filament\Resources\Sales\SaleResource;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -18,6 +20,7 @@ class SalesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(fn ($record) => SaleResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('reference')
                     ->label('Sale Ref.')
@@ -92,6 +95,7 @@ class SalesTable
                         ->when($state === 'false', fn ($q) => $q->where('amount_due', 0))),
             ])
             ->recordActions([
+                ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
             ])

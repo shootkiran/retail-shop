@@ -6,16 +6,18 @@ use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\Purchases\Pages\CreatePurchase;
 use App\Filament\Resources\Purchases\Pages\EditPurchase;
 use App\Filament\Resources\Purchases\Pages\ListPurchases;
+use App\Filament\Resources\Purchases\Pages\ViewPurchase;
 use App\Filament\Resources\Purchases\Schemas\PurchaseForm;
+use App\Filament\Resources\Purchases\Schemas\PurchaseInfolist;
 use App\Filament\Resources\Purchases\Tables\PurchasesTable;
 use App\Models\Purchase;
 use BackedEnum;
-use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class PurchaseResource extends Resource
 {
@@ -36,6 +38,11 @@ class PurchaseResource extends Resource
         return PurchaseForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return PurchaseInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return PurchasesTable::configure($table);
@@ -52,6 +59,7 @@ class PurchaseResource extends Resource
     {
         return [
             'index' => ListPurchases::route('/'),
+            'view' => ViewPurchase::route('/{record}'),
             'create' => CreatePurchase::route('/create'),
             'edit' => EditPurchase::route('/{record}/edit'),
         ];

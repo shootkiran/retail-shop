@@ -4,8 +4,6 @@ namespace App\Filament\Pages;
 
 use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Widgets\Reports\CustomerDuesAgingChart;
-use App\Filament\Widgets\Reports\FinanceSummaryStats;
-use App\Filament\Widgets\Reports\MonthlySalesChart;
 use App\Filament\Widgets\Reports\TopCustomersChart;
 use App\Filament\Widgets\Reports\TopItemsChart;
 use BackedEnum;
@@ -30,8 +28,6 @@ class Reports extends Page
     protected function getHeaderWidgets(): array
     {
         return [
-            FinanceSummaryStats::class,
-            MonthlySalesChart::class,
             TopItemsChart::class,
             TopCustomersChart::class,
             CustomerDuesAgingChart::class,

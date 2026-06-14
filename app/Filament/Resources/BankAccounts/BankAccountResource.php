@@ -6,8 +6,14 @@ use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\BankAccounts\Pages\CreateBankAccount;
 use App\Filament\Resources\BankAccounts\Pages\EditBankAccount;
 use App\Filament\Resources\BankAccounts\Pages\ListBankAccounts;
+use App\Filament\Resources\BankAccounts\Pages\ViewBankAccount;
+use App\Filament\Resources\BankAccounts\RelationManagers\TransactionsRelationManager;
+use App\Filament\Resources\BankAccounts\Schemas\BankAccountInfolist;
 use App\Models\BankAccount;
 use BackedEnum;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -61,9 +67,15 @@ class BankAccountResource extends Resource
         ]);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return BankAccountInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (BankAccount $record): string => static::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -89,13 +101,26 @@ class BankAccountResource extends Resource
                 IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),
+            ])
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            'transactions' => TransactionsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListBankAccounts::route('/'),
+            'view' => ViewBankAccount::route('/{record}'),
             'create' => CreateBankAccount::route('/create'),
             'edit' => EditBankAccount::route('/{record}/edit'),
         ];

@@ -19,6 +19,8 @@
 - [done] Product base unit model and unit definition storage.
 - [partial] Unit conversion on sale and purchase line items.
 - [partial] Inventory display in selected unit.
+- [done] Inventory count sheet PDF for manual stock taking.
+- [done] Bulk stock adjustment batches with audit trail and variance tracking.
 - [planned] Product-level conversion presets and unit-based stock views.
 
 ## Customers
@@ -34,8 +36,9 @@
 - [done] Financial entry ledger foundation.
 - [partial] Bank deposits and withdrawals entry flow.
 - [partial] Bank transfers between accounts.
-- [partial] Vendor payment transfers through bank or cash.
+- [done] Vendor payment transfers through bank or cash.
 - [done] Daybook ledger screen for financial entries.
+- [done] Chart of accounts master data and accounting chart page.
 
 ## Reports
 

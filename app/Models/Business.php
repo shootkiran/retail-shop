@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ChartOfAccountsService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -72,6 +73,8 @@ class Business extends Model
                 'opening_balance' => 0,
                 'is_active' => true,
             ]);
+
+            app(ChartOfAccountsService::class)->seedBusiness($business);
         });
     }
 

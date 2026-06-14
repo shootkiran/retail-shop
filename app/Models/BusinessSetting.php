@@ -23,11 +23,13 @@ class BusinessSetting extends Model
         'time_format',
         'invoice_prefix',
         'invoice_footer',
+        'period_lock_date',
     ];
 
     protected $casts = [
         'currency_decimal_places' => 'integer',
         'invoice_footer' => 'array',
+        'period_lock_date' => 'date',
     ];
 
     public function business(): BelongsTo

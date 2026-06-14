@@ -7,6 +7,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int|null $business_id
+ * @property string $name
+ * @property string|null $symbol
+ * @property float|string $multiplier_to_base
+ * @property bool $is_base
+ * @property bool $is_active
+ */
 class Unit extends Model
 {
     use BelongsToBusiness;
@@ -27,8 +36,23 @@ class Unit extends Model
         'is_active' => 'boolean',
     ];
 
+    /** @return BelongsTo<Business, self> */
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function toBase(float|int|string|null $quantity): float
+    {
+        $multiplier = max((float) $this->multiplier_to_base, 1.0);
+
+        return round((float) $quantity * $multiplier, 4);
+    }
+
+    public function fromBase(float|int|string|null $quantity): float
+    {
+        $multiplier = max((float) $this->multiplier_to_base, 1.0);
+
+        return round((float) $quantity / $multiplier, 4);
     }
 }

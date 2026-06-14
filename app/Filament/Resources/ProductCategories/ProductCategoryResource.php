@@ -6,16 +6,17 @@ use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\ProductCategories\Pages\CreateProductCategory;
 use App\Filament\Resources\ProductCategories\Pages\EditProductCategory;
 use App\Filament\Resources\ProductCategories\Pages\ListProductCategories;
+use App\Filament\Resources\ProductCategories\Pages\ViewProductCategory;
 use App\Filament\Resources\ProductCategories\Schemas\ProductCategoryForm;
+use App\Filament\Resources\ProductCategories\Schemas\ProductCategoryInfolist;
 use App\Filament\Resources\ProductCategories\Tables\ProductCategoriesTable;
 use App\Models\ProductCategory;
 use BackedEnum;
-use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class ProductCategoryResource extends Resource
 {
@@ -23,7 +24,7 @@ class ProductCategoryResource extends Resource
 
     protected static ?string $model = ProductCategory::class;
 
-    protected static BackedEnum|string|null $navigationIcon = Heroicon::OutlinedSquares2x2;
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-squares-2x2';
 
     protected static UnitEnum|string|null $navigationGroup = 'Catalog';
 
@@ -32,6 +33,11 @@ class ProductCategoryResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return ProductCategoryForm::configure($schema);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return ProductCategoryInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -50,6 +56,7 @@ class ProductCategoryResource extends Resource
     {
         return [
             'index' => ListProductCategories::route('/'),
+            'view' => ViewProductCategory::route('/{record}'),
             'create' => CreateProductCategory::route('/create'),
             'edit' => EditProductCategory::route('/{record}/edit'),
         ];

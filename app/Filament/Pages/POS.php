@@ -3,24 +3,26 @@
 namespace App\Filament\Pages;
 
 use App\Models\Customer;
+use App\Models\FinancialEntry;
 use App\Models\HeldOrder;
 use App\Models\PaymentMethod;
-use App\Models\FinancialEntry;
 use App\Models\PosTerminal;
 use App\Models\ProductCategory;
 use App\Models\ProductItem;
 use App\Models\Sale;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use UnitEnum;
-use Filament\Pages\Page;
 use Livewire\Attributes\On;
+use UnitEnum;
 
 class POS extends Page
 {
@@ -73,6 +75,40 @@ class POS extends Page
         $this->customerName = null;
         $this->paymentMethodId = $this->resolveDefaultPaymentMethodId();
         $this->posTerminalId = $this->resolveSelectedTerminalId();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        if ($this->terminals->count() <= 1) {
+            return [];
+        }
+
+        return [
+            Action::make('changeTerminal')
+                ->label('Change Terminal')
+                ->icon(Heroicon::OutlinedArrowPath)
+                ->color('gray')
+                ->modalHeading('Change POS terminal')
+                ->modalSubmitActionLabel('Set Terminal')
+                ->form([
+                    Select::make('pos_terminal_id')
+                        ->label('POS Terminal')
+                        ->options($this->terminals->mapWithKeys(fn (PosTerminal $terminal): array => [
+                            $terminal->id => $terminal->name.' ('.$terminal->code.')',
+                        ])->all())
+                        ->required()
+                        ->default($this->posTerminalId),
+                ])
+                ->action(function (array $data): void {
+                    $this->posTerminalId = $this->resolveSelectedTerminalId((int) ($data['pos_terminal_id'] ?? 0));
+
+                    Notification::make()
+                        ->title('Terminal updated')
+                        ->body('POS transactions will now use the selected terminal.')
+                        ->success()
+                        ->send();
+                }),
+        ];
     }
 
     #[On('pos:checkout')]
@@ -175,9 +211,9 @@ class POS extends Page
         $customers = Customer::query()
             ->select(['id', 'name', 'email', 'phone'])
             ->where(function ($query) use ($term): void {
-                $query->where('name', 'like', '%' . $term . '%')
-                    ->orWhere('email', 'like', '%' . $term . '%')
-                    ->orWhere('phone', 'like', '%' . $term . '%');
+                $query->where('name', 'like', '%'.$term.'%')
+                    ->orWhere('email', 'like', '%'.$term.'%')
+                    ->orWhere('phone', 'like', '%'.$term.'%');
             })
             ->orderBy('name')
             ->limit($limit)
@@ -358,7 +394,19 @@ class POS extends Page
 
     protected function customersPayload(): array
     {
-        return [];
+        return Customer::query()
+            ->select(['id', 'name', 'email', 'phone'])
+            ->orderBy('name')
+            ->limit(12)
+            ->get()
+            ->map(fn (Customer $customer) => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+            ])
+            ->values()
+            ->all();
     }
 
     protected function paymentMethodsPayload(): array
@@ -412,13 +460,13 @@ class POS extends Page
 
         $previewItems = collect($items)
             ->take(3)
-            ->map(fn ($item) => $item['quantity'] . ' x ' . $item['name'])
+            ->map(fn ($item) => $item['quantity'].' x '.$item['name'])
             ->implode(', ');
 
         $remaining = max(count($items) - 3, 0);
 
         if ($remaining > 0) {
-            $previewItems .= ' +' . $remaining . ' more';
+            $previewItems .= ' +'.$remaining.' more';
         }
 
         return $previewItems;
@@ -480,7 +528,7 @@ class POS extends Page
 
         Notification::make()
             ->title('Order resumed')
-            ->body('Held order "' . $label . '" loaded into the cart.')
+            ->body('Held order "'.$label.'" loaded into the cart.')
             ->success()
             ->send();
 
@@ -540,7 +588,7 @@ class POS extends Page
             return null;
         }
 
-        $label = trim($this->holdName) ?: 'Hold ' . now()->format('H:i');
+        $label = trim($this->holdName) ?: 'Hold '.now()->format('H:i');
 
         $heldOrder = HeldOrder::create([
             'user_id' => Auth::id(),
@@ -573,7 +621,7 @@ class POS extends Page
 
         Notification::make()
             ->title('Order held')
-            ->body('The order was saved as "' . $label . '" and can be resumed later.')
+            ->body('The order was saved as "'.$label.'" and can be resumed later.')
             ->success()
             ->send();
 
@@ -660,11 +708,11 @@ class POS extends Page
                     }
 
                     if ($quantity <= 0) {
-                        throw new \RuntimeException('Invalid quantity for "' . $product->name . '".');
+                        throw new \RuntimeException('Invalid quantity for "'.$product->name.'".');
                     }
 
                     if ((int) $product->stock_quantity < $quantity) {
-                        throw new \RuntimeException('Insufficient stock for "' . $product->name . '".');
+                        throw new \RuntimeException('Insufficient stock for "'.$product->name.'".');
                     }
                 }
 
@@ -749,16 +797,16 @@ class POS extends Page
             return null;
         } catch (ModelNotFoundException|
             \Throwable $exception) {
-            report($exception);
+                report($exception);
 
-            Notification::make()
-                ->title('Checkout failed')
-                ->body('An unexpected error occurred while processing the sale.')
-                ->danger()
-                ->send();
+                Notification::make()
+                    ->title('Checkout failed')
+                    ->body('An unexpected error occurred while processing the sale.')
+                    ->danger()
+                    ->send();
 
-            return null;
-        }
+                return null;
+            }
 
         $sale?->refresh();
         $saleId = $sale->id;
@@ -769,7 +817,7 @@ class POS extends Page
 
         Notification::make()
             ->title('Sale completed')
-            ->body('Sale ' . $saleReference . ' has been recorded successfully.')
+            ->body('Sale '.$saleReference.' has been recorded successfully.')
             ->success()
             ->send();
 
@@ -962,6 +1010,7 @@ class POS extends Page
             $discount = (float) ($item['discount'] ?? 0);
 
             $lineSubtotal = max($quantity * $unitPrice, 0);
+
             return max($lineSubtotal - $discount, 0);
         });
 
@@ -1010,7 +1059,7 @@ class POS extends Page
             return;
         }
 
-        $item = & $this->cart[$rowKey];
+        $item = &$this->cart[$rowKey];
 
         $item['quantity'] = max(1, (int) ($item['quantity'] ?? 1));
         $item['unit_price'] = round((float) ($item['unit_price'] ?? 0), 2);

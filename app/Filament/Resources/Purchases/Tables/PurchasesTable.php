@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources\Purchases\Tables;
 
+use App\Filament\Resources\Purchases\PurchaseResource;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -17,6 +19,7 @@ class PurchasesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(fn ($record) => PurchaseResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('reference')
                     ->label('Purchase Ref.')
@@ -70,6 +73,7 @@ class PurchasesTable
                         ->when($state === 'false', fn ($q) => $q->where('amount_due', 0))),
             ])
             ->recordActions([
+                ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
             ])

@@ -8,6 +8,7 @@ use App\Filament\Resources\BusinessSettings\Pages\ListBusinessSettings;
 use App\Models\BusinessSetting;
 use BackedEnum;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -44,6 +45,7 @@ class BusinessSettingResource extends Resource
                     TextInput::make('currency_decimal_places')->numeric()->minValue(0)->maxValue(4)->default(2),
                     TextInput::make('date_format')->required()->default('d M Y')->maxLength(50),
                     TextInput::make('time_format')->required()->default('H:i')->maxLength(50),
+                    DatePicker::make('period_lock_date')->label('Period Lock Date'),
                 ]),
             Section::make('Invoices')
                 ->columns(2)
@@ -63,6 +65,9 @@ class BusinessSettingResource extends Resource
                 TextColumn::make('currency_code')->label('Currency'),
                 TextColumn::make('currency_symbol')->label('Symbol'),
                 TextColumn::make('invoice_prefix')->label('Invoice prefix'),
+                TextColumn::make('period_lock_date')
+                    ->label('Period Lock Date')
+                    ->date(),
             ])
             ->recordActions([
                 EditAction::make(),

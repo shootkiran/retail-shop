@@ -5,7 +5,7 @@ namespace Tests\Feature\Filament\Resources;
 use App\Filament\Resources\ProductCategories\Pages\CreateProductCategory;
 use App\Filament\Resources\ProductCategories\Pages\EditProductCategory;
 use App\Filament\Resources\ProductCategories\Pages\ListProductCategories;
-use App\Filament\Resources\ProductCategories\ProductCategoryResource;
+use App\Filament\Resources\ProductCategories\Pages\ViewProductCategory;
 use App\Models\ProductCategory;
 use Filament\Actions\DeleteAction;
 use Illuminate\Support\Str;
@@ -68,5 +68,13 @@ class ProductCategoryResourceTest extends FilamentTestCase
             ->callTableAction(DeleteAction::class, $category);
 
         $this->assertModelMissing($category);
+    }
+
+    public function test_view_page_can_render(): void
+    {
+        $category = ProductCategory::factory()->create();
+
+        Livewire::test(ViewProductCategory::class, ['record' => $category->getKey()])
+            ->assertOk();
     }
 }

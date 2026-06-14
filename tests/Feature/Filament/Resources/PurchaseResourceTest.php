@@ -5,7 +5,9 @@ namespace Tests\Feature\Filament\Resources;
 use App\Filament\Resources\Purchases\Pages\CreatePurchase;
 use App\Filament\Resources\Purchases\Pages\EditPurchase;
 use App\Filament\Resources\Purchases\Pages\ListPurchases;
-use App\Filament\Resources\Purchases\PurchaseResource;
+use App\Filament\Resources\Purchases\Pages\ViewPurchase;
+use App\Models\BankAccount;
+use App\Models\FinancialEntry;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\Purchase;
@@ -26,6 +28,19 @@ class PurchaseResourceTest extends FilamentTestCase
     {
         $vendor = Vendor::factory()->create();
         $paymentMethod = PaymentMethod::factory()->create();
+        $bankAccount = BankAccount::create([
+            'name' => 'Purchase Bank',
+            'bank_name' => 'Test Bank',
+            'account_type' => 'checking',
+            'opening_balance' => 500,
+            'is_active' => true,
+        ]);
+
+        $paymentMethod->forceFill([
+            'settlement_account_type' => 'bank',
+            'settlement_account_id' => $bankAccount->id,
+        ])->save();
+
         $productItem = ProductItem::factory()
             ->for($vendor)
             ->create();
@@ -69,6 +84,13 @@ class PurchaseResourceTest extends FilamentTestCase
         $this->assertEqualsWithDelta(210.0, (float) $purchase->grand_total, 0.01);
         $this->assertEqualsWithDelta(110.0, (float) $purchase->amount_due, 0.01);
 
+        $this->assertDatabaseHas(FinancialEntry::class, [
+            'entry_type' => 'purchase_payment',
+            'direction' => 'debit',
+            'reference' => $purchase->reference,
+            'amount' => 100,
+        ]);
+
         $this->assertDatabaseHas(PurchaseItem::class, [
             'purchase_id' => $purchase->id,
             'product_item_id' => $productItem->id,
@@ -87,6 +109,19 @@ class PurchaseResourceTest extends FilamentTestCase
 
         $newVendor = Vendor::factory()->create();
         $newPaymentMethod = PaymentMethod::factory()->create();
+        $bankAccount = BankAccount::create([
+            'name' => 'Purchase Update Bank',
+            'bank_name' => 'Test Bank',
+            'account_type' => 'checking',
+            'opening_balance' => 800,
+            'is_active' => true,
+        ]);
+
+        $newPaymentMethod->forceFill([
+            'settlement_account_type' => 'bank',
+            'settlement_account_id' => $bankAccount->id,
+        ])->save();
+
         $newProductItem = ProductItem::factory()
             ->for($newVendor)
             ->create();
@@ -130,6 +165,13 @@ class PurchaseResourceTest extends FilamentTestCase
         $this->assertEqualsWithDelta(205.0, (float) $purchase->grand_total, 0.01);
         $this->assertEqualsWithDelta(55.0, (float) $purchase->amount_due, 0.01);
 
+        $this->assertDatabaseHas(FinancialEntry::class, [
+            'entry_type' => 'purchase_payment',
+            'direction' => 'debit',
+            'reference' => $purchase->reference,
+            'amount' => 150,
+        ]);
+
         $this->assertDatabaseHas(PurchaseItem::class, [
             'purchase_id' => $purchase->id,
             'product_item_id' => $newProductItem->id,
@@ -150,5 +192,15 @@ class PurchaseResourceTest extends FilamentTestCase
         $this->assertDatabaseMissing(PurchaseItem::class, [
             'purchase_id' => $purchase->id,
         ]);
+    }
+
+    public function test_view_page_can_render(): void
+    {
+        $purchase = Purchase::factory()
+            ->has(PurchaseItem::factory(), 'items')
+            ->create();
+
+        Livewire::test(ViewPurchase::class, ['record' => $purchase->getKey()])
+            ->assertOk();
     }
 }

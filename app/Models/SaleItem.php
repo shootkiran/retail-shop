@@ -34,6 +34,27 @@ class SaleItem extends Model
     protected static function booted(): void
     {
         static::saving(function (SaleItem $item): void {
+            if ($item->isDirty('sale_id')) {
+                $originalSaleId = $item->getOriginal('sale_id');
+                if ($originalSaleId) {
+                    $originalSale = Sale::find($originalSaleId);
+                    if ($originalSale) {
+                        $originalSale->checkTransactionPeriodLock('sold_at');
+                    }
+                }
+                $newSaleId = $item->sale_id;
+                if ($newSaleId) {
+                    $newSale = Sale::find($newSaleId);
+                    if ($newSale) {
+                        $newSale->checkTransactionPeriodLock('sold_at');
+                    }
+                }
+            } else {
+                if ($item->sale) {
+                    $item->sale->checkTransactionPeriodLock('sold_at');
+                }
+            }
+
             $unit = $item->unit;
             $item->quantity_base = $unit ? $unit->toBase($item->quantity) : (float) $item->quantity;
             $item->discount_amount ??= 0;
@@ -73,7 +94,34 @@ class SaleItem extends Model
         });
 
         static::saved(function (SaleItem $item): void {
-            $item->sale?->refreshTotals();
+            if ($item->isDirty('sale_id')) {
+                $originalSaleId = $item->getOriginal('sale_id');
+                if ($originalSaleId) {
+                    $originalSale = Sale::find($originalSaleId);
+                    if ($originalSale) {
+                        $originalSale->refreshTotals();
+                    }
+                }
+                $newSaleId = $item->sale_id;
+                if ($newSaleId) {
+                    $newSale = Sale::find($newSaleId);
+                    if ($newSale) {
+                        $newSale->refreshTotals();
+                    }
+                }
+            } else {
+                $item->sale?->refreshTotals();
+            }
+        });
+
+        static::deleting(function (SaleItem $item): void {
+            $parentId = $item->getOriginal('sale_id') ?? $item->sale_id;
+            if ($parentId) {
+                $parent = Sale::find($parentId);
+                if ($parent) {
+                    $parent->checkTransactionPeriodLock('sold_at');
+                }
+            }
         });
 
         static::deleted(function (SaleItem $item): void {

@@ -51,7 +51,7 @@ class SalesRelationManager extends RelationManager
                     ->label('Amount Due')
                     ->money('NPR')
                     ->badge()
-                    ->color(fn (string | float | null $state): string => (float) $state > 0 ? 'danger' : 'success'),
+                    ->color(fn (string|float|null $state): string => (float) $state > 0 ? 'danger' : 'success'),
                 TextColumn::make('sold_at')
                     ->dateTime()
                     ->sortable()

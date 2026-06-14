@@ -3,17 +3,24 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Lab404\Impersonate\Models\Impersonate;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory;
+
+    use HasRoles;
+    use Impersonate;
+    use Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -75,6 +82,21 @@ class User extends Authenticatable
     public function canUseFrontOffice(): bool
     {
         return $this->is_active && in_array($this->office_type, ['front_office', 'back_office'], true);
+    }
+
+    public function canImpersonate(): bool
+    {
+        return $this->is_platform_admin;
+    }
+
+    public function canBeImpersonated(): bool
+    {
+        return $this->is_active && ! $this->is_platform_admin;
+    }
+
+    public function getRolesLabelAttribute(): string
+    {
+        return $this->roles->pluck('name')->join(', ') ?: 'No roles';
     }
 
     public function canAccessPanel(Panel $panel): bool

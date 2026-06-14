@@ -19,7 +19,7 @@ class ProductCategoryFactory extends Factory
 
         return [
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . $this->faker->unique()->lexify(),
+            'slug' => Str::slug($name).'-'.$this->faker->unique()->lexify(),
             'description' => $this->faker->sentence(),
         ];
     }

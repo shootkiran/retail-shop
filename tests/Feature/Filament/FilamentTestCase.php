@@ -4,8 +4,8 @@ namespace Tests\Feature\Filament;
 
 use App\Models\User;
 use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 abstract class FilamentTestCase extends TestCase

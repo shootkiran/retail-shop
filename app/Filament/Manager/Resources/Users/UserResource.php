@@ -5,11 +5,16 @@ namespace App\Filament\Manager\Resources\Users;
 use App\Filament\Manager\Resources\Users\Pages\CreateUser;
 use App\Filament\Manager\Resources\Users\Pages\EditUser;
 use App\Filament\Manager\Resources\Users\Pages\ListUsers;
+use App\Filament\Manager\Resources\Users\Pages\ViewUser;
+use App\Filament\Manager\Resources\Users\Schemas\UserInfolist;
 use App\Models\User;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -32,6 +37,11 @@ class UserResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return UserInfolist::configure($schema);
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -51,6 +61,11 @@ class UserResource extends Resource
                         ->searchable()
                         ->preload()
                         ->required(),
+                    Select::make('roles')
+                        ->multiple()
+                        ->relationship('roles', 'name')
+                        ->searchable()
+                        ->preload(),
                     Select::make('office_type')
                         ->options(config('retail.office_types'))
                         ->default('front_office')
@@ -66,16 +81,27 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (User $record): string => static::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('email')->searchable(),
                 TextColumn::make('currentBusiness.name')->label('Business')->sortable(),
+                TextColumn::make('roles_label')
+                    ->label('Roles'),
                 TextColumn::make('office_type')->badge(),
                 IconColumn::make('is_active')->boolean()->label('Active'),
                 IconColumn::make('is_platform_admin')->boolean()->label('Platform admin'),
             ])
             ->recordActions([
+                ViewAction::make(),
                 EditAction::make(),
+                Action::make('impersonate')
+                    ->label('Impersonate')
+                    ->icon('heroicon-o-arrow-right-end-on-rectangle')
+                    ->color('warning')
+                    ->url(fn (User $record): string => route('impersonate', ['id' => $record->getKey()]))
+                    ->visible(fn (User $record): bool => auth()->user()?->canImpersonate() === true && $record->canBeImpersonated()),
+                DeleteAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -88,6 +114,7 @@ class UserResource extends Resource
     {
         return [
             'index' => ListUsers::route('/'),
+            'view' => ViewUser::route('/{record}'),
             'create' => CreateUser::route('/create'),
             'edit' => EditUser::route('/{record}/edit'),
         ];

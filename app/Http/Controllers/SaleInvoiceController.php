@@ -32,6 +32,6 @@ class SaleInvoiceController extends Controller
             'showReceipt' => $showReceipt,
         ])->setPaper('a5');
 
-        return $pdf->stream('invoice-' . $sale->reference . '.pdf');
+        return $pdf->stream('invoice-'.$sale->reference.'.pdf');
     }
 }

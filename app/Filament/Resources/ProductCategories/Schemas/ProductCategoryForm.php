@@ -4,8 +4,8 @@ namespace App\Filament\Resources\ProductCategories\Schemas;
 
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class ProductCategoryForm
 {

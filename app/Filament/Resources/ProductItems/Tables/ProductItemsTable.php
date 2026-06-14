@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\ProductItems\Tables;
 
+use App\Filament\Resources\ProductItems\ProductItemResource;
+use App\Models\ProductItem;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -17,6 +20,7 @@ class ProductItemsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (ProductItem $record): string => ProductItemResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -36,7 +40,7 @@ class ProductItemsTable
                     ->sortable(),
                 TextColumn::make('tax_rate')
                     ->label('Tax %')
-                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2) . '%')
+                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2).'%')
                     ->sortable(),
                 TextColumn::make('stock_quantity')
                     ->label('Stock')
@@ -57,6 +61,7 @@ class ProductItemsTable
                     ->placeholder('All statuses'),
             ])
             ->recordActions([
+                ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
             ])

@@ -15,7 +15,7 @@ trait BelongsToBusiness
             $businessId = app(CurrentBusiness::class)->id();
 
             if ($businessId) {
-                $builder->where($builder->getModel()->getTable() . '.business_id', $businessId);
+                $builder->where($builder->getModel()->getTable().'.business_id', $businessId);
             }
         });
 

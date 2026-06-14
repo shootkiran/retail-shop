@@ -6,15 +6,17 @@ use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\ProductItems\Pages\CreateProductItem;
 use App\Filament\Resources\ProductItems\Pages\EditProductItem;
 use App\Filament\Resources\ProductItems\Pages\ListProductItems;
+use App\Filament\Resources\ProductItems\Pages\ViewProductItem;
 use App\Filament\Resources\ProductItems\Schemas\ProductItemForm;
+use App\Filament\Resources\ProductItems\Schemas\ProductItemInfolist;
 use App\Filament\Resources\ProductItems\Tables\ProductItemsTable;
 use App\Models\ProductItem;
 use BackedEnum;
-use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ProductItemResource extends Resource
 {
@@ -33,6 +35,11 @@ class ProductItemResource extends Resource
         return ProductItemForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return ProductItemInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return ProductItemsTable::configure($table);
@@ -49,6 +56,7 @@ class ProductItemResource extends Resource
     {
         return [
             'index' => ListProductItems::route('/'),
+            'view' => ViewProductItem::route('/{record}'),
             'create' => CreateProductItem::route('/create'),
             'edit' => EditProductItem::route('/{record}/edit'),
         ];

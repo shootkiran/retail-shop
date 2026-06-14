@@ -8,10 +8,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 
 class PaymentMethodForm
 {
@@ -24,9 +23,17 @@ class PaymentMethodForm
                     TextInput::make('name')
                         ->required()
                         ->maxLength(255),
-                    TextInput::make('type')
-                        ->placeholder('Cash, Card, Transfer...')
-                        ->maxLength(255),
+                    Select::make('type')
+                        ->options([
+                            'cash' => 'Cash',
+                            'card' => 'Card',
+                            'online' => 'Online Transfer',
+                            'bank_transfer' => 'Bank Transfer',
+                            'cheque' => 'Cheque',
+                            'offline' => 'Offline',
+                        ])
+                        ->required()
+                        ->searchable(),
                     Select::make('settlement_account_type')
                         ->label('Settlement Account Type')
                         ->options([

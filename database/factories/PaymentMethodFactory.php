@@ -15,7 +15,7 @@ class PaymentMethodFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->unique()->word() . ' Payment',
+            'name' => $this->faker->unique()->word().' Payment',
             'type' => $this->faker->randomElement(['cash', 'cheque', 'online']),
             'description' => $this->faker->sentence(),
             'is_active' => true,

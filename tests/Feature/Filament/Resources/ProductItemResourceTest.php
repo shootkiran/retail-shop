@@ -5,7 +5,7 @@ namespace Tests\Feature\Filament\Resources;
 use App\Filament\Resources\ProductItems\Pages\CreateProductItem;
 use App\Filament\Resources\ProductItems\Pages\EditProductItem;
 use App\Filament\Resources\ProductItems\Pages\ListProductItems;
-use App\Filament\Resources\ProductItems\ProductItemResource;
+use App\Filament\Resources\ProductItems\Pages\ViewProductItem;
 use App\Models\ProductCategory;
 use App\Models\ProductItem;
 use App\Models\Vendor;
@@ -101,5 +101,13 @@ class ProductItemResourceTest extends FilamentTestCase
             ->callTableAction(DeleteAction::class, $item);
 
         $this->assertModelMissing($item);
+    }
+
+    public function test_view_page_can_render(): void
+    {
+        $item = ProductItem::factory()->create();
+
+        Livewire::test(ViewProductItem::class, ['record' => $item->getKey()])
+            ->assertOk();
     }
 }

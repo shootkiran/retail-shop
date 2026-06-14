@@ -2,19 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\Customer;
 use App\Models\Business;
 use App\Models\BusinessSetting;
+use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\PosTerminal;
 use App\Models\ProductCategory;
 use App\Models\ProductItem;
 use App\Models\User;
 use App\Models\Vendor;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
@@ -91,6 +93,20 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ],
         ]));
+
+        $this->call(ChartOfAccountsSeeder::class);
+
+        collect([
+            'manage users',
+            'manage roles',
+            'manage permissions',
+            'impersonate users',
+        ])->each(fn (string $permission) => Permission::findOrCreate($permission));
+
+        $superAdminRole = Role::findOrCreate('super-admin');
+        $superAdminRole->givePermissionTo(Permission::all());
+        $admin->assignRole($superAdminRole);
+        $posUser->assignRole($superAdminRole);
 
         $categories = collect([
             'Beverages' => 'Hot and cold drinks ready for checkout.',
@@ -224,20 +240,20 @@ class DatabaseSeeder extends Seeder
                 ->withoutGlobalScopes()
                 ->updateOrCreate(
                     ['sku' => $product['sku']],
-                [
-                    'business_id' => $business->id,
-                    'product_category_id' => $categories[$product['category']]->id,
-                    'vendor_id' => $vendors[$product['vendor']]->id,
-                    'name' => $product['name'],
-                    'barcode' => $product['barcode'],
-                    'description' => $product['description'],
-                    'unit_cost' => $product['unit_cost'],
-                    'unit_price' => $product['unit_price'],
-                    'tax_rate' => $product['tax_rate'],
-                    'stock_quantity' => $product['stock_quantity'],
-                    'reorder_level' => $product['reorder_level'],
-                    'is_active' => true,
-                ],
+                    [
+                        'business_id' => $business->id,
+                        'product_category_id' => $categories[$product['category']]->id,
+                        'vendor_id' => $vendors[$product['vendor']]->id,
+                        'name' => $product['name'],
+                        'barcode' => $product['barcode'],
+                        'description' => $product['description'],
+                        'unit_cost' => $product['unit_cost'],
+                        'unit_price' => $product['unit_price'],
+                        'tax_rate' => $product['tax_rate'],
+                        'stock_quantity' => $product['stock_quantity'],
+                        'reorder_level' => $product['reorder_level'],
+                        'is_active' => true,
+                    ],
                 );
         });
 
@@ -309,20 +325,20 @@ class DatabaseSeeder extends Seeder
                 ->withoutGlobalScopes()
                 ->updateOrCreate(
                     ['barcode' => $barcode],
-                [
-                    'business_id' => $business->id,
-                    'product_category_id' => $categoryPool->random()->id,
-                    'vendor_id' => $vendorPool->random()->id,
-                    'name' => $name,
-                    'barcode' => $barcode,
-                    'description' => $faker->sentence(),
-                    'unit_cost' => $unitCost,
-                    'unit_price' => max($unitPrice, $unitCost + 0.1),
-                    'tax_rate' => $faker->randomElement([0, 5, 7.5, 13]),
-                    'stock_quantity' => $faker->numberBetween(0, 500),
-                    'reorder_level' => $faker->numberBetween(5, 50),
-                    'is_active' => true,
-                ],
+                    [
+                        'business_id' => $business->id,
+                        'product_category_id' => $categoryPool->random()->id,
+                        'vendor_id' => $vendorPool->random()->id,
+                        'name' => $name,
+                        'barcode' => $barcode,
+                        'description' => $faker->sentence(),
+                        'unit_cost' => $unitCost,
+                        'unit_price' => max($unitPrice, $unitCost + 0.1),
+                        'tax_rate' => $faker->randomElement([0, 5, 7.5, 13]),
+                        'stock_quantity' => $faker->numberBetween(0, 500),
+                        'reorder_level' => $faker->numberBetween(5, 50),
+                        'is_active' => true,
+                    ],
                 );
         }
 

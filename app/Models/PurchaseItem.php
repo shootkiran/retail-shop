@@ -34,6 +34,27 @@ class PurchaseItem extends Model
     protected static function booted(): void
     {
         static::saving(function (PurchaseItem $item): void {
+            if ($item->isDirty('purchase_id')) {
+                $originalPurchaseId = $item->getOriginal('purchase_id');
+                if ($originalPurchaseId) {
+                    $originalPurchase = Purchase::find($originalPurchaseId);
+                    if ($originalPurchase) {
+                        $originalPurchase->checkTransactionPeriodLock('purchased_at');
+                    }
+                }
+                $newPurchaseId = $item->purchase_id;
+                if ($newPurchaseId) {
+                    $newPurchase = Purchase::find($newPurchaseId);
+                    if ($newPurchase) {
+                        $newPurchase->checkTransactionPeriodLock('purchased_at');
+                    }
+                }
+            } else {
+                if ($item->purchase) {
+                    $item->purchase->checkTransactionPeriodLock('purchased_at');
+                }
+            }
+
             $unit = $item->unit;
             $item->quantity_base = $unit ? $unit->toBase($item->quantity) : (float) $item->quantity;
             $item->discount_amount ??= 0;
@@ -73,7 +94,34 @@ class PurchaseItem extends Model
         });
 
         static::saved(function (PurchaseItem $item): void {
-            $item->purchase?->refreshTotals();
+            if ($item->isDirty('purchase_id')) {
+                $originalPurchaseId = $item->getOriginal('purchase_id');
+                if ($originalPurchaseId) {
+                    $originalPurchase = Purchase::find($originalPurchaseId);
+                    if ($originalPurchase) {
+                        $originalPurchase->refreshTotals();
+                    }
+                }
+                $newPurchaseId = $item->purchase_id;
+                if ($newPurchaseId) {
+                    $newPurchase = Purchase::find($newPurchaseId);
+                    if ($newPurchase) {
+                        $newPurchase->refreshTotals();
+                    }
+                }
+            } else {
+                $item->purchase?->refreshTotals();
+            }
+        });
+
+        static::deleting(function (PurchaseItem $item): void {
+            $parentId = $item->getOriginal('purchase_id') ?? $item->purchase_id;
+            if ($parentId) {
+                $parent = Purchase::find($parentId);
+                if ($parent) {
+                    $parent->checkTransactionPeriodLock('purchased_at');
+                }
+            }
         });
 
         static::deleted(function (PurchaseItem $item): void {

@@ -81,21 +81,6 @@
                     <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">Quick Actions</h2>
 
                     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        <template x-if="terminals.length > 1">
-                            <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
-                                <span>POS Terminal</span>
-                                <select
-                                    x-model.number="posTerminalId"
-                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-normal shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-white/10 dark:bg-gray-950 dark:text-white"
-                                >
-                                    <option value="">Select terminal</option>
-                                    <template x-for="terminal in terminals" :key="terminal.id">
-                                        <option :value="terminal.id" x-text="terminal.name + ' (' + terminal.code + ')'"></option>
-                                    </template>
-                                </select>
-                            </label>
-                        </template>
-
                         <label class="flex flex-col gap-1 text-[0.6rem] font-semibold text-gray-600 dark:text-gray-300">
                             <span>Search Products</span>
                             <input
@@ -831,9 +816,9 @@
                     const term = (this.customerSearchTerm ?? '').trim();
 
                     if (term.length === 0) {
-                        this.customerSearchResults = [];
+                        this.customerSearchResults = this.customers;
                         this.isSearchingCustomers = false;
-                        this.showCustomerResults = false;
+                        this.showCustomerResults = true;
                         return;
                     }
 
@@ -841,6 +826,11 @@
                 },
                 focusCustomerSearch() {
                     this.showCustomerResults = true;
+
+                    if ((this.customerSearchTerm ?? '').trim().length === 0 && this.customers.length) {
+                        this.customerSearchResults = this.customers;
+                        return;
+                    }
                 },
                 searchCustomers() {
                     const term = (this.customerSearchTerm ?? '').trim();

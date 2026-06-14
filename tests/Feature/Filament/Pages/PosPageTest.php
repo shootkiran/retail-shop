@@ -8,7 +8,6 @@ use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\Sale;
-use App\Models\User;
 use App\Support\CurrentBusiness;
 use Tests\Feature\Filament\FilamentTestCase;
 

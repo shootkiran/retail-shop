@@ -7,6 +7,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
+/**
+ * @property int $id
+ * @property int|null $business_id
+ * @property string $accountable_type
+ * @property int $accountable_id
+ * @property string $entry_type
+ * @property string $direction
+ * @property float|string $amount
+ * @property string|null $reference
+ * @property string|null $notes
+ */
 class FinancialEntry extends Model
 {
     use BelongsToBusiness;

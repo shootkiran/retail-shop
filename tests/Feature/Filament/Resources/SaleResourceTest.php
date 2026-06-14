@@ -5,7 +5,7 @@ namespace Tests\Feature\Filament\Resources;
 use App\Filament\Resources\Sales\Pages\CreateSale;
 use App\Filament\Resources\Sales\Pages\EditSale;
 use App\Filament\Resources\Sales\Pages\ListSales;
-use App\Filament\Resources\Sales\SaleResource;
+use App\Filament\Resources\Sales\Pages\ViewSale;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
@@ -154,5 +154,15 @@ class SaleResourceTest extends FilamentTestCase
         $this->assertDatabaseMissing(SaleItem::class, [
             'sale_id' => $sale->id,
         ]);
+    }
+
+    public function test_view_page_can_render(): void
+    {
+        $sale = Sale::factory()
+            ->has(SaleItem::factory(), 'items')
+            ->create();
+
+        Livewire::test(ViewSale::class, ['record' => $sale->getKey()])
+            ->assertOk();
     }
 }

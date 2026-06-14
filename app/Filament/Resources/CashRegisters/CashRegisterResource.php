@@ -6,9 +6,14 @@ use App\Filament\Concerns\RequiresBackOffice;
 use App\Filament\Resources\CashRegisters\Pages\CreateCashRegister;
 use App\Filament\Resources\CashRegisters\Pages\EditCashRegister;
 use App\Filament\Resources\CashRegisters\Pages\ListCashRegisters;
+use App\Filament\Resources\CashRegisters\Pages\ViewCashRegister;
+use App\Filament\Resources\CashRegisters\Schemas\CashRegisterInfolist;
 use App\Models\CashRegister;
 use App\Models\PosTerminal;
 use BackedEnum;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -54,9 +59,15 @@ class CashRegisterResource extends Resource
         ]);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return CashRegisterInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (CashRegister $record): string => static::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -78,13 +89,26 @@ class CashRegisterResource extends Resource
                 IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),
+            ])
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListCashRegisters::route('/'),
+            'view' => ViewCashRegister::route('/{record}'),
             'create' => CreateCashRegister::route('/create'),
             'edit' => EditCashRegister::route('/{record}/edit'),
         ];
