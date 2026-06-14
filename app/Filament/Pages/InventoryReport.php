@@ -148,7 +148,7 @@ class InventoryReport extends Page
                 'vendor:id,name',
                 'baseUnit:id,name,symbol,multiplier_to_base',
             ])
-            ->when($this->categoryId, fn (Builder $query, int $categoryId): Builder => $query->where('product_category_id', $categoryId)) 
+            ->when($this->categoryId, fn (Builder $query, int $categoryId): Builder => $query->where('product_category_id', $categoryId))
             ->when($this->vendorId, fn (Builder $query, int $vendorId): Builder => $query->where('vendor_id', $vendorId))
             ->when($this->stockStatus !== 'all', function (Builder $query): Builder {
                 return match ($this->stockStatus) {

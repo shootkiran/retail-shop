@@ -164,7 +164,7 @@ class StockAdjustments extends Page
 
         Notification::make()
             ->title('Stock adjustment posted')
-            ->body('Reference: '.$batch->reference)
+            ->body('Reference: ' . $batch->reference)
             ->success()
             ->send();
     }

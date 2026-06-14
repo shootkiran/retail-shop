@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Attributes\On;
+use PHPUnit\Event\Code\Throwable;
+use RuntimeException;
 use UnitEnum;
 
 class POS extends Page
@@ -46,7 +48,7 @@ class POS extends Page
 
     public array $cart = [];
 
-    public $activeCategory = null;
+    public ?int $activeCategory = null;
 
     public string $search = '';
 
@@ -82,7 +84,6 @@ class POS extends Page
         if ($this->terminals->count() <= 1) {
             return [];
         }
-
         return [
             Action::make('changeTerminal')
                 ->label('Change Terminal')
@@ -93,8 +94,8 @@ class POS extends Page
                 ->form([
                     Select::make('pos_terminal_id')
                         ->label('POS Terminal')
-                        ->options($this->terminals->mapWithKeys(fn (PosTerminal $terminal): array => [
-                            $terminal->id => $terminal->name.' ('.$terminal->code.')',
+                        ->options($this->terminals->mapWithKeys(fn(PosTerminal $terminal): array => [
+                            $terminal->id => $terminal->name . ' (' . $terminal->code . ')',
                         ])->all())
                         ->required()
                         ->default($this->posTerminalId),
@@ -211,14 +212,14 @@ class POS extends Page
         $customers = Customer::query()
             ->select(['id', 'name', 'email', 'phone'])
             ->where(function ($query) use ($term): void {
-                $query->where('name', 'like', '%'.$term.'%')
-                    ->orWhere('email', 'like', '%'.$term.'%')
-                    ->orWhere('phone', 'like', '%'.$term.'%');
+                $query->where('name', 'like', '%' . $term . '%')
+                    ->orWhere('email', 'like', '%' . $term . '%')
+                    ->orWhere('phone', 'like', '%' . $term . '%');
             })
             ->orderBy('name')
             ->limit($limit)
             ->get()
-            ->map(fn (Customer $customer) => [
+            ->map(fn(Customer $customer) => [
                 'id' => $customer->id,
                 'name' => $customer->name,
                 'email' => $customer->email,
@@ -322,7 +323,7 @@ class POS extends Page
     protected function formatHeldOrderPayload(HeldOrder $heldOrder): array
     {
         $items = collect(data_get($heldOrder->cart, 'items', []))
-            ->map(fn ($item) => [
+            ->map(fn($item) => [
                 'product_id' => (int) ($item['product_id'] ?? 0),
                 'name' => $item['name'] ?? 'Product',
                 'sku' => $item['sku'] ?? null,
@@ -332,7 +333,7 @@ class POS extends Page
                 'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
                 'discount' => $this->sanitizeMoney($item['discount'] ?? 0),
             ])
-            ->filter(fn ($item) => $item['product_id'] > 0)
+            ->filter(fn($item) => $item['product_id'] > 0)
             ->values()
             ->all();
 
@@ -366,7 +367,7 @@ class POS extends Page
     protected function categoriesPayload(): array
     {
         return $this->categories
-            ->map(fn ($category) => [
+            ->map(fn($category) => [
                 'id' => $category->id,
                 'name' => $category->name,
             ])
@@ -377,7 +378,7 @@ class POS extends Page
     protected function productsPayload(): array
     {
         return $this->products
-            ->map(fn ($product) => [
+            ->map(fn($product) => [
                 'id' => $product->id,
                 'name' => $product->name,
                 'sku' => $product->sku,
@@ -399,7 +400,7 @@ class POS extends Page
             ->orderBy('name')
             ->limit(12)
             ->get()
-            ->map(fn (Customer $customer) => [
+            ->map(fn(Customer $customer) => [
                 'id' => $customer->id,
                 'name' => $customer->name,
                 'email' => $customer->email,
@@ -412,7 +413,7 @@ class POS extends Page
     protected function paymentMethodsPayload(): array
     {
         return $this->paymentMethods
-            ->map(fn ($method) => [
+            ->map(fn($method) => [
                 'id' => $method->id,
                 'name' => $method->name,
             ])
@@ -423,7 +424,7 @@ class POS extends Page
     protected function terminalsPayload(): array
     {
         return $this->terminals
-            ->map(fn (PosTerminal $terminal) => [
+            ->map(fn(PosTerminal $terminal) => [
                 'id' => $terminal->id,
                 'name' => $terminal->name,
                 'code' => $terminal->code,
@@ -436,14 +437,14 @@ class POS extends Page
     protected function heldOrdersPayload(): array
     {
         return $this->heldOrders
-            ->map(fn ($heldOrder) => $this->formatHeldOrderPayload($heldOrder))
+            ->map(fn($heldOrder) => $this->formatHeldOrderPayload($heldOrder))
             ->all();
     }
 
     protected function recentSalesPayload(): array
     {
         return $this->recentSales
-            ->map(fn ($sale) => [
+            ->map(fn($sale) => [
                 'id' => $sale->id,
                 'reference' => $sale->reference,
                 'grand_total' => (float) $sale->grand_total,
@@ -460,19 +461,19 @@ class POS extends Page
 
         $previewItems = collect($items)
             ->take(3)
-            ->map(fn ($item) => $item['quantity'].' x '.$item['name'])
+            ->map(fn($item) => $item['quantity'] . ' x ' . $item['name'])
             ->implode(', ');
 
         $remaining = max(count($items) - 3, 0);
 
         if ($remaining > 0) {
-            $previewItems .= ' +'.$remaining.' more';
+            $previewItems .= ' +' . $remaining . ' more';
         }
 
         return $previewItems;
     }
 
-    protected function normalizeEventPayload($payload): array
+    protected function normalizeEventPayload(mixed $payload): array
     {
         if (is_array($payload)) {
             if (array_key_exists('payload', $payload) && is_array($payload['payload'])) {
@@ -485,7 +486,7 @@ class POS extends Page
         return [];
     }
 
-    protected function nullableInt($value): ?int
+    protected function nullableInt(mixed $value): ?int
     {
         if ($value === null || $value === '' || $value === 'null') {
             return null;
@@ -528,7 +529,7 @@ class POS extends Page
 
         Notification::make()
             ->title('Order resumed')
-            ->body('Held order "'.$label.'" loaded into the cart.')
+            ->body('Held order "' . $label . '" loaded into the cart.')
             ->success()
             ->send();
 
@@ -588,7 +589,7 @@ class POS extends Page
             return null;
         }
 
-        $label = trim($this->holdName) ?: 'Hold '.now()->format('H:i');
+        $label = trim($this->holdName) ?: 'Hold ' . now()->format('H:i');
 
         $heldOrder = HeldOrder::create([
             'user_id' => Auth::id(),
@@ -601,7 +602,7 @@ class POS extends Page
             'amount_paid' => $this->amountPaid,
             'cart' => [
                 'items' => collect($this->cart)
-                    ->map(fn (array $item) => [
+                    ->map(fn(array $item) => [
                         'product_id' => $item['product_id'],
                         'name' => $item['name'],
                         'sku' => $item['sku'],
@@ -621,7 +622,7 @@ class POS extends Page
 
         Notification::make()
             ->title('Order held')
-            ->body('The order was saved as "'.$label.'" and can be resumed later.')
+            ->body('The order was saved as "' . $label . '" and can be resumed later.')
             ->success()
             ->send();
 
@@ -683,7 +684,7 @@ class POS extends Page
             DB::transaction(function () use (&$sale, $subtotal, $totalDiscount, $taxAmount, $grandTotal, $amountPaid, $amountDue, $paymentStatus, $cartItems): void {
                 $productIds = $cartItems->pluck('product_id')
                     ->filter()
-                    ->map(fn ($productId) => (int) $productId)
+                    ->map(fn($productId) => (int) $productId)
                     ->unique()
                     ->values()
                     ->all();
@@ -695,7 +696,7 @@ class POS extends Page
                     ->keyBy('id');
 
                 if ($lockedProducts->count() !== count($productIds)) {
-                    throw new \RuntimeException('One or more products are no longer available.');
+                    throw new RuntimeException('One or more products are no longer available.');
                 }
 
                 foreach ($cartItems as $item) {
@@ -704,15 +705,15 @@ class POS extends Page
                     $product = $lockedProducts->get($productId);
 
                     if (! $product instanceof ProductItem) {
-                        throw new \RuntimeException('One or more products are no longer available.');
+                        throw new RuntimeException('One or more products are no longer available.');
                     }
 
                     if ($quantity <= 0) {
-                        throw new \RuntimeException('Invalid quantity for "'.$product->name.'".');
+                        throw new RuntimeException('Invalid quantity for "' . $product->name . '".');
                     }
 
                     if ((int) $product->stock_quantity < $quantity) {
-                        throw new \RuntimeException('Insufficient stock for "'.$product->name.'".');
+                        throw new RuntimeException('Insufficient stock for "' . $product->name . '".');
                     }
                 }
 
@@ -725,14 +726,14 @@ class POS extends Page
                         ->first();
 
                     if (! $customer instanceof Customer) {
-                        throw new \RuntimeException('Selected customer could not be found.');
+                        throw new RuntimeException('Selected customer could not be found.');
                     }
 
                     $projectedBalance = (float) $customer->outstanding_balance + $amountDue;
                     $creditLimit = (float) $customer->credit_limit;
 
                     if ($creditLimit > 0 && $projectedBalance - $creditLimit > 0.01) {
-                        throw new \RuntimeException('Customer credit limit exceeded.');
+                        throw new RuntimeException('Customer credit limit exceeded.');
                     }
                 }
 
@@ -755,7 +756,7 @@ class POS extends Page
                 ]);
 
                 $sale->items()->createMany(
-                    $cartItems->map(fn (array $item) => [
+                    $cartItems->map(fn(array $item) => [
                         'product_item_id' => $item['product_id'],
                         'quantity' => $item['quantity'],
                         'unit_price' => $item['unit_price'],
@@ -787,7 +788,7 @@ class POS extends Page
                     $customer->increment('outstanding_balance', $amountDue);
                 }
             });
-        } catch (\RuntimeException $exception) {
+        } catch (RuntimeException $exception) {
             Notification::make()
                 ->title('Checkout blocked')
                 ->body($exception->getMessage())
@@ -795,29 +796,31 @@ class POS extends Page
                 ->send();
 
             return null;
-        } catch (ModelNotFoundException|
-            \Throwable $exception) {
-                report($exception);
+        } catch (
+            ModelNotFoundException |
+            \Throwable $exception
+        ) {
+            report($exception);
 
-                Notification::make()
-                    ->title('Checkout failed')
-                    ->body('An unexpected error occurred while processing the sale.')
-                    ->danger()
-                    ->send();
+            Notification::make()
+                ->title('Checkout failed')
+                ->body('An unexpected error occurred while processing the sale.')
+                ->danger()
+                ->send();
 
-                return null;
-            }
+            return null;
+        }
 
         $sale?->refresh();
-        $saleId = $sale->id;
-        $saleReference = $sale->reference;
+        $saleId = $sale?->id;
+        $saleReference = $sale?->reference;
 
         $this->clearCart();
         $this->lastSaleId = $saleId;
 
         Notification::make()
             ->title('Sale completed')
-            ->body('Sale '.$saleReference.' has been recorded successfully.')
+            ->body('Sale ' . $saleReference . ' has been recorded successfully.')
             ->success()
             ->send();
 
@@ -828,7 +831,7 @@ class POS extends Page
     {
         return collect($this->cart)
             ->values()
-            ->map(fn (array $item) => [
+            ->map(fn(array $item) => [
                 'product_id' => $item['product_id'],
                 'name' => $item['name'] ?? 'Product',
                 'sku' => $item['sku'] ?? null,
@@ -883,7 +886,7 @@ class POS extends Page
 
     public function getCustomersProperty(): Collection
     {
-        return collect();
+        return new Collection();
     }
 
     public function getPaymentMethodsProperty(): Collection
@@ -960,12 +963,12 @@ class POS extends Page
     public function getSubtotalProperty(): float
     {
         return round(collect($this->cart)
-            ->sum(fn ($item) => $item['line_subtotal'] ?? (($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0))), 2);
+            ->sum(fn($item) => $item['line_subtotal'] ?? (($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0))), 2);
     }
 
     public function getLineDiscountProperty(): float
     {
-        return round(collect($this->cart)->sum(fn ($item) => $item['discount'] ?? 0), 2);
+        return round(collect($this->cart)->sum(fn($item) => $item['discount'] ?? 0), 2);
     }
 
     public function getSubtotalAfterDiscountProperty(): float
@@ -1082,7 +1085,7 @@ class POS extends Page
         }
     }
 
-    protected function sanitizeMoney($value): float
+    protected function sanitizeMoney(float|int|string $value): float
     {
         return round(max((float) $value, 0), 2);
     }

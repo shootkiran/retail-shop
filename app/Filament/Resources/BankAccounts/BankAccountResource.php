@@ -75,7 +75,7 @@ class BankAccountResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->recordUrl(fn (BankAccount $record): string => static::getUrl('view', ['record' => $record]))
+            ->recordUrl(fn(BankAccount $record): string => static::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('name')
                     ->searchable()

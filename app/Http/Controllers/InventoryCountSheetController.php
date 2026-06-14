@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Services\InventoryCountSheetService;
 use App\Support\CurrentBusiness;
@@ -12,9 +13,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class InventoryCountSheetController extends Controller
 {
-    public function __construct(
-        protected InventoryCountSheetService $service,
-    ) {}
+    public function __construct(protected InventoryCountSheetService $service)
+    {
+        //
+    }
 
     public function __invoke(Request $request): Response
     {
@@ -41,6 +43,6 @@ class InventoryCountSheetController extends Controller
             'generatedAt' => now(),
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->stream('inventory-count-sheet-'.now()->format('Y-m-d').'.pdf');
+        return $pdf->stream('inventory-count-sheet-' . now()->format('Y-m-d') . '.pdf');
     }
 }

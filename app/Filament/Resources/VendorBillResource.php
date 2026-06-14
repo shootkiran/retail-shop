@@ -25,6 +25,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -95,8 +96,8 @@ class VendorBillResource extends Resource
                                     ->minValue(1)
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(
-                                        fn (Set $set, Get $get) =>
-                                            $set('total_amount', self::calculateLineTotal($get))
+                                        fn(Set $set, Get $get) =>
+                                        $set('total_amount', self::calculateLineTotal($get))
                                     )
                                     ->required(),
                                 TextInput::make('unit_cost')
@@ -104,8 +105,8 @@ class VendorBillResource extends Resource
                                     ->prefix('रू')
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(
-                                        fn (Set $set, Get $get) =>
-                                            $set('total_amount', self::calculateLineTotal($get))
+                                        fn(Set $set, Get $get) =>
+                                        $set('total_amount', self::calculateLineTotal($get))
                                     )
                                     ->required(),
                                 TextInput::make('tax_amount')
@@ -114,8 +115,8 @@ class VendorBillResource extends Resource
                                     ->default(0.00)
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(
-                                        fn (Set $set, Get $get) =>
-                                            $set('total_amount', self::calculateLineTotal($get))
+                                        fn(Set $set, Get $get) =>
+                                        $set('total_amount', self::calculateLineTotal($get))
                                     ),
                                 TextInput::make('total_amount')
                                     ->numeric()
@@ -123,8 +124,8 @@ class VendorBillResource extends Resource
                                     ->readOnly()
                                     ->dehydrated(),
                             ])
-                            ->afterStateHydrated(fn (Set $set, Get $get) => self::updateTotals($get, $set))
-                            ->afterStateUpdated(fn (Set $set, Get $get) => self::updateTotals($get, $set)),
+                            ->afterStateHydrated(fn(Set $set, Get $get) => self::updateTotals($get, $set))
+                            ->afterStateUpdated(fn(Set $set, Get $get) => self::updateTotals($get, $set)),
                     ]),
                 Section::make('Financial Summary')
                     ->columns(3)
@@ -138,7 +139,7 @@ class VendorBillResource extends Resource
                             ->prefix('रू')
                             ->default(0.00)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn (Set $set, Get $get) => self::updateTotals($get, $set)),
+                            ->afterStateUpdated(fn(Set $set, Get $get) => self::updateTotals($get, $set)),
                         TextInput::make('tax_amount')
                             ->numeric()
                             ->prefix('रू')
@@ -171,8 +172,8 @@ class VendorBillResource extends Resource
     protected static function updateTotals(Get $get, Set $set): void
     {
         $items = collect($get('items') ?? []);
-        $lineTotal = $items->sum(fn ($i) => ((float) ($i['quantity'] ?? 0)) * ((float) ($i['unit_cost'] ?? 0)));
-        $taxTotal = $items->sum(fn ($i) => (float) ($i['tax_amount'] ?? 0));
+        $lineTotal = $items->sum(fn($i) => ((float) ($i['quantity'] ?? 0)) * ((float) ($i['unit_cost'] ?? 0)));
+        $taxTotal = $items->sum(fn($i) => (float) ($i['tax_amount'] ?? 0));
         $discount = (float) $get('discount_amount');
         $amountPaid = (float) $get('amount_paid');
 
@@ -200,7 +201,8 @@ class VendorBillResource extends Resource
                 TextColumn::make('due_date')
                     ->date()
                     ->sortable(),
-                BadgeColumn::make('status')
+                IconColumn::make('status')
+                    ->boolean()
                     ->colors([
                         'gray' => 'draft',
                         'info' => 'posted',
@@ -220,7 +222,7 @@ class VendorBillResource extends Resource
                     ->label('Pay')
                     ->icon('heroicon-o-credit-card')
                     ->color('success')
-                    ->visible(fn (VendorBill $record): bool => in_array($record->status, ['posted', 'partially_paid']) && $record->amount_due > 0)
+                    ->visible(fn(VendorBill $record): bool => in_array($record->status, ['posted', 'partially_paid']) && $record->amount_due > 0)
                     ->form([
                         DatePicker::make('payment_date')
                             ->required()
@@ -235,7 +237,7 @@ class VendorBillResource extends Resource
                             ->required(),
                         Select::make('account_id')
                             ->label('Account')
-                            ->options(fn (Get $get): array => match ($get('account_type')) {
+                            ->options(fn(Get $get): array => match ($get('account_type')) {
                                 BankAccount::class => BankAccount::query()->orderBy('name')->pluck('name', 'id')->all(),
                                 CashRegister::class => CashRegister::query()->orderBy('name')->pluck('name', 'id')->all(),
                                 default => [],
@@ -247,8 +249,8 @@ class VendorBillResource extends Resource
                             ->numeric()
                             ->prefix('रू')
                             ->required()
-                            ->maxValue(fn (VendorBill $record) => $record->amount_due)
-                            ->default(fn (VendorBill $record) => $record->amount_due),
+                            ->maxValue(fn(VendorBill $record) => $record->amount_due)
+                            ->default(fn(VendorBill $record) => $record->amount_due),
                         TextInput::make('reference')
                             ->maxLength(255),
                         Textarea::make('notes')
